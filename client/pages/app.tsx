@@ -2,6 +2,7 @@ import React from 'react'
 import PeerList from '../components/peerList'
 import Room from '../components/room'
 import RoomList from '../components/roomList'
+import { useRtcConnections } from '../contexts/rtcConnectionManager'
 import { useWebsocket } from '../contexts/socketManager'
 
 export interface Peer {
@@ -11,12 +12,13 @@ export interface Peer {
 
 export const App = () => {
   const ws = useWebsocket()
-  
+  const rtc = useRtcConnections()
+
   return (
     <>
       <RoomList currRoom={ws.room.name} joinRoom={ws.joinRoom} />
       <Room name={ws.room.name} inCall={ws.room.self.inCall} makeCall={ws.makeCall} leaveCall={ws.leaveCall} >
-        <PeerList peers={ws.room.peers} />
+        <PeerList peers={ws.room.peers} toggleMute={rtc.toggleMutePeer} />
       </Room>
       <style jsx>
         {`

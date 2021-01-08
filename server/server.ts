@@ -53,9 +53,23 @@ const Server = (callback: (port: number) => void) => {
           : []
       }
 
+      const leaveRoom = () => {
+        const currRoomId = getRoom()
+        if (currRoomId) {
+          console.log(`${socket.id} leaving room ${currRoomId}`)
+          // let others in room know that peer left room
+          socket.in(currRoomId).broadcast.emit('peer-left-room', socket.id)
+          setCallRoom(null)
+          setRoom(null)
+        }
+      }
+
       socket.on('join-room', async (roomName: string) => {
-        console.log(`${socket.id} joining room ${roomName}`)
+        // if user is in a room, let peers know they are leaving
+        leaveRoom()
+
         const room = await setRoom(roomName)
+        console.log(`${socket.id} joined room ${room}`)
 
         // let others in this room know that this peer has joined
         socket.to(room!).broadcast.emit('peer-joined-room', socket.id)
@@ -65,49 +79,46 @@ const Server = (callback: (port: number) => void) => {
         socket.emit('joined-room', roomName, peers)
       })
 
-      socket.on('leave-room', (roomName: string) => {
-        const currRoomId = getRoom()
-        if (currRoomId) {
-          console.log(`${socket.id} leaving room ${currRoomId}`)
-          // let others in room know that peer left room
-          socket.in(currRoomId).broadcast.emit('peer-left-room', socket.id)
-          setCallRoom(null)
-          setRoom(null)
-        }
-      })
+      socket.on('leave-room', leaveRoom)
 
       socket.on('join-call', async (roomName: string) => {
         const roomId = getRoom()
         const callRoomId = await setCallRoom(roomName)
 
-        console.log(`user ${socket.id} joining call in ${callRoomId}`)
-        const peers = await getPeers(roomName)
+        console.log(`user ${socket.id} joining call in ${roomId} (room ${callRoomId})`)
+
         // let others in room know that a peer is joining the call
         socket.in(roomId!).broadcast.emit('peer-joining-call', socket.id)
       })
 
-      socket.on('leave-call', async (roomId: string) => {
+      socket.on('leave-call', async () => {
+        const roomId = getRoom()
         const currCallRoomId = getCallRoom()
-        if (currCallRoomId) {
-          console.log(`${socket.id} leaving call ${currCallRoomId}`)
-          // let others in call know that peer left call
-          socket.in(currCallRoomId).broadcast.emit('peer-left-call', socket.id)
+        if (roomId && currCallRoomId) {
+          console.log(`user ${socket.id} is leaving call in ${roomId} (room ${currCallRoomId})`)
+          // let others in room know that peer left call
+          socket.in(roomId).broadcast.emit('peer-left-call', socket.id)
           setCallRoom(null)
         }
       })
 
       // when a client is notified that a new peer is joining the call,
       // they will send an offer to that peer and expect an answer in return
-      socket.on('offer', (peerId: string, offer) => {
+      socket.on('offer', (peerId: string, offer: RTCSessionDescriptionInit) => {
         // client wants to send an offer to a peer
         console.log(`user ${socket.id} is sending an offer to ${peerId}`)
         socket.to(peerId).emit('offer', socket.id, offer)
       })
 
-      socket.on('answer', (peerId: string, offer) => {
+      socket.on('answer', (peerId: string, offer: RTCSessionDescriptionInit) => {
         // client wants to send an answer to a peer
         console.log(`user ${socket.id} is sending an answer to ${peerId}`)
         socket.to(peerId).emit('answer', socket.id, offer)
+      })
+
+      socket.on('candidate', (peerId: string, candidate: RTCIceCandidate) => {
+        console.log(`user ${socket.id} is sending a candidate to ${peerId}`)
+        socket.to(peerId).emit('candidate', socket.id, candidate)
       })
 
       socket.on('disconnecting', () => {

@@ -1,4 +1,4 @@
-import React, { FunctionComponent, useEffect, useState } from 'react'
+import React, { FunctionComponent, useCallback, useEffect, useState } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { Peer } from '../pages/app'
 import { useRtcConnections } from './rtcConnectionManager'
@@ -37,6 +37,105 @@ export const SocketManager: FunctionComponent<SocketManagerProps> = ({ children 
   const rtc = useRtcConnections()
   const [roomState, setRoomState] = useState<RoomState>({ name: null, self: { id: socket.id, inCall: false }, peers: [] })
 
+  const joinedRoom = (roomName: string, peers: Peer[]) => {
+    console.log(`you joined these peers in ${roomName}:`)
+    console.log(peers)
+    setRoomState({ name: roomName, self: { id: socket.id, inCall: false }, peers: peers })
+  }
+
+  const peerJoiningCall = async (peerId: string) => {
+    console.log(`${peerId} is joining the call`)
+
+    // if current user is in call too, then start up connection workflow
+    if (roomState.self.inCall) {
+      const peerConnection = rtc.addConnection(peerId, (id, candidate) => {
+        socket.emit('candidate', peerId, candidate)
+      })?.conn
+
+      if (peerConnection) {
+        // send the new peer an offer to connect
+        const offer = await peerConnection.createOffer()
+        await peerConnection.setLocalDescription(offer)
+        socket.emit('offer', peerId, offer)
+      }
+    }
+
+    // need to highlight that the peer is in call in UI
+    const peerUpdate = [...roomState.peers]
+    const peer = peerUpdate.find((p) => p.id === peerId)
+    if (peer) {
+      peer.inCall = true
+      setRoomState((prev) => ({ ...prev, peers: peerUpdate }))
+    }
+  }
+
+  const receivedOffer = async (peerId: string, offer: RTCSessionDescriptionInit) => {
+    console.log(`offer received from ${peerId}`)
+    const peerConnection = rtc.addConnection(peerId, (id, candidate) => {
+      rtc.addIceCandidate(id, candidate)
+    })?.conn
+    if (peerConnection) {
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(offer))
+      const answer = await peerConnection.createAnswer()
+      await peerConnection.setLocalDescription(answer)
+      socket.emit('answer', peerId, answer)
+    }
+  }
+
+  const receivedAnswer = async (peerId: string, answer: RTCSessionDescriptionInit) => {
+    console.log(`answer received from ${peerId}`)
+    const peerConnection = rtc.getConnection(peerId)?.conn
+    if (peerConnection) await peerConnection.setRemoteDescription(new RTCSessionDescription(answer))
+  }
+
+  const receivedCandidate = (peerId: string, candidate: RTCIceCandidate) => {
+    rtc.addIceCandidate(peerId, candidate)
+  }
+
+  const peerJoinedRoom = (peerId: string) => {
+    console.log(`peer ${peerId} joined the room`)
+    if (!roomState.peers.some((p) => p.id === peerId)) {
+      const updatePeers = [...roomState.peers]
+      updatePeers.push({ id: peerId, inCall: false })
+      setRoomState((prev) => ({ ...prev, peers: updatePeers }))
+    }
+  }
+
+  const peerLeftRoom = (peerId: string) => {
+    console.log(`peer ${peerId} left the room`)
+    rtc.removeConnection(peerId)
+    setRoomState((prev) => ({ ...prev, peers: prev.peers.filter((p) => p.id !== peerId) }))
+  }
+
+  const peerLeftCall = (peerId: string) => {
+    console.log(`peer ${peerId} left the call`)
+    rtc.removeConnection(peerId)
+    const peerUpdate = [...roomState.peers]
+    const peer = peerUpdate.find((p) => p.id == peerId)
+    if (peer) peer.inCall = false
+    setRoomState((prev) => ({ ...prev, peers: peerUpdate }))
+  }
+
+  const initSocket = () => {
+    socket.off('joined-room')
+    socket.off('peer-joining-call')
+    socket.off('offer')
+    socket.off('answer')
+    socket.off('candidate')
+    socket.off('peer-joined-room')
+    socket.off('peer-left-room')
+    socket.off('peer-left-call')
+
+    socket.on('joined-room', joinedRoom)
+    socket.on('peer-joining-call', peerJoiningCall)
+    socket.on('offer', receivedOffer)
+    socket.on('answer', receivedAnswer)
+    socket.on('candidate', receivedCandidate)
+    socket.on('peer-joined-room', peerJoinedRoom)
+    socket.on('peer-left-room', peerLeftRoom)
+    socket.on('peer-left-call', peerLeftCall)
+  }
+
   const joinRoom = (roomName: string) => {
     console.log('you are joining ' + roomName)
     socket.emit('join-room', roomName)
@@ -57,7 +156,7 @@ export const SocketManager: FunctionComponent<SocketManagerProps> = ({ children 
     console.log('you are leaving the call')
     rtc.stopMic()
     socket.emit('leave-call', roomState.name)
-    rtc.reset()
+    rtc.destroy()
     setRoomState((prev) => {
       const newState = { ...prev }
       newState.self.inCall = false
@@ -66,85 +165,13 @@ export const SocketManager: FunctionComponent<SocketManagerProps> = ({ children 
   }
 
   useEffect(() => {
-    socket.on('joined-room', (roomName: string, peers: Peer[]) => {
-      console.log(`you joined these peers in ${roomName}:`)
-      console.log(peers)
-      setRoomState((prev) => ({ ...prev, name: roomName, peers: peers }))
-    })
-
-    socket.on('peer-joining-call', async (peerId: string) => {
-      console.log(`${peerId} is joining the call`)
-
-      // if current user is in call too, then start up connection workflow
-      if (roomState.self.inCall) {
-        const peerConnection = rtc.addConnection(peerId)?.conn
-
-        if (peerConnection) {
-          // send the new peer an offer to connect
-          let offer: RTCSessionDescriptionInit = await peerConnection.createOffer()
-          await peerConnection.setLocalDescription(offer)
-          socket.emit('offer', peerId, offer)
-        }
-      }
-
-      // need to highlight that the peer is in call in UI
-      const peerUpdate = [...roomState.peers]
-      const peer = peerUpdate.find((p) => p.id === peerId)
-      if (peer) {
-        peer.inCall = true
-        setRoomState(prev => ({ ...prev, peers: peerUpdate }))
-      }
-    })
-
-    // receive an offer from a user
-    socket.on('offer', async (peerId: string, offer: RTCSessionDescriptionInit) => {
-      console.log(`offer received from ${peerId}`)
-      const peerConnection = rtc.addConnection(peerId)?.conn
-      if (peerConnection) {
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(offer))
-        const answer = await peerConnection.createAnswer()
-        await peerConnection.setLocalDescription(answer)
-        socket.emit('answer', peerId, answer)
-      }
-    })
-
-    // receive an answer from a user
-    socket.on('answer', async (peerId: string, answer: RTCSessionDescriptionInit) => {
-      console.log(`answer received from ${peerId}`)
-      const peerConnection = rtc.getConnection(peerId)?.conn
-      if (peerConnection) peerConnection.setRemoteDescription(new RTCSessionDescription(answer))
-    })
-
-    // another user has joined the same room as this user
-    socket.on('peer-joined-room', (peerId: string) => {
-      console.log(`peer ${peerId} joined the room`)
-      if (!roomState.peers.some((p) => p.id === peerId)) {
-        const updatePeers = [...roomState.peers]
-        updatePeers.push({ id: peerId, inCall: false })
-        setRoomState((prev) => ({ ...prev, peers: updatePeers }))
-      }
-    })
-
-    socket.on('peer-left-room', (peerId: string) => {
-      console.log(`peer ${peerId} left the room`)
-      rtc.removeConnection(peerId)
-      setRoomState((prev) => ({ ...prev, peers: prev.peers.filter((p) => p.id !== peerId) }))
-    })
-
-    socket.on('peer-left-call', (peerId: string) => {
-      console.log(`peer ${peerId} left the call`)
-      rtc.removeConnection(peerId)
-      const peerUpdate = [...roomState.peers]
-      const peer = peerUpdate.find((p) => p.id == peerId)
-      if (peer) peer.inCall = false
-      setRoomState((prev) => ({ ...prev, peers: peerUpdate }))
-    })
+    initSocket()
 
     return () => {
       console.log('socketManager unmounted')
-      socket?.disconnect()
+      //socket?.disconnect()
     }
-  }, [])
+  })
 
   return (
     <SocketContext.Provider

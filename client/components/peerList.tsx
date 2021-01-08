@@ -3,6 +3,7 @@ import { Peer } from "../pages/app"
 
 type PeerListProps = {
   peers: Peer[]
+  toggleMute: (id: string) => void
 }
 
 const getBold: any = (inCall: boolean) => {
@@ -12,10 +13,10 @@ const getBold: any = (inCall: boolean) => {
   else return null
 }
 
-const PeerList = ({ peers }: PeerListProps) => {
+const PeerList = ({ peers, toggleMute }: PeerListProps) => {
 
-  const renderMute = () => (
-    <button>mute</button>
+  const renderMute = (id: string) => (
+    <button onClick={() => toggleMute(id)}>mute</button>
   )
   
   return (
@@ -25,7 +26,7 @@ const PeerList = ({ peers }: PeerListProps) => {
           return (
             <div key={p.id} style={getBold(p.inCall)}>
               {p.id}
-              {renderMute()}
+              {renderMute(p.id)}
             </div>
           )
         })}
