@@ -1,6 +1,5 @@
 import React, { FunctionComponent, useCallback, useEffect, useState } from 'react'
 import { io, Socket } from 'socket.io-client'
-import { Peer } from '../pages/app'
 import { useRtcConnections } from './rtcConnectionManager'
 
 type SocketManagerContext = {
@@ -25,7 +24,11 @@ export const SocketContext = React.createContext<SocketManagerContext>({
 export const useWebsocket = () => React.useContext(SocketContext)
 
 type SocketManagerProps = {}
-type RoomState = {
+export type Peer = {
+  id: string
+  inCall: boolean
+}
+export type RoomState = {
   name: string | null
   self: Peer
   peers: Peer[]

@@ -1,5 +1,5 @@
 import { CSSProperties } from "react"
-import { Peer } from "../pages/app"
+import { Peer } from "../contexts/socketManager"
 
 type PeerListProps = {
   peers: Peer[]

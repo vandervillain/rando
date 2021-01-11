@@ -23,7 +23,7 @@
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx"
-, "components/peerConnector.txt", "components/peerConnector.txt", "components/peerConnector.txt"  ],
+  ],
   "exclude": [
     "node_modules"
   ]
