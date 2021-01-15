@@ -1,33 +1,18 @@
-import { CSSProperties } from "react"
-import { Peer } from "../contexts/socketManager"
+import { Peer } from '../contexts/socketManager'
+import PeerControl from './peerControl'
 
 type PeerListProps = {
   peers: Peer[]
-  toggleMute: (id: string) => void
 }
 
-const getBold: any = (inCall: boolean) => {
-  if (inCall) return {
-    fontWeight: 'bold'
-  } as CSSProperties
-  else return null
-}
+const PeerList = ({ peers }: PeerListProps) => {
 
-const PeerList = ({ peers, toggleMute }: PeerListProps) => {
-
-  const renderMute = (id: string) => (
-    <button onClick={() => toggleMute(id)}>mute</button>
-  )
-  
   return (
-    <div className="peer-list">
+    <div className='peer-list'>
       {peers &&
-        peers.map((p) => {
+        peers.filter(p => p.id).map((p) => {
           return (
-            <div key={p.id} style={getBold(p.inCall)}>
-              {p.id}
-              {renderMute(p.id)}
-            </div>
+            <PeerControl key={p.id} peerId={p.id} inCall={p.inCall} isOutputting={p.isOutputting} />
           )
         })}
     </div>

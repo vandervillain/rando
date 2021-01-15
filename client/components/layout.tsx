@@ -2,8 +2,9 @@ import Head from 'next/head'
 import React, { FunctionComponent } from 'react'
 import { RTCConnectionManager } from '../contexts/rtcConnectionManager'
 import { SocketManager } from '../contexts/socketManager'
+import { StreamManager } from '../contexts/streamManager'
 
-const Layout: FunctionComponent = ({ children }) => {  
+const Layout: FunctionComponent = ({ children }) => {
   return (
     <div className='container'>
       <Head>
@@ -11,11 +12,11 @@ const Layout: FunctionComponent = ({ children }) => {
         <link rel='icon' href='/favicon.ico' />
       </Head>
       <main>
-        <RTCConnectionManager>
-          <SocketManager>
-            {children}
-          </SocketManager>
-        </RTCConnectionManager>
+        <StreamManager>
+          <RTCConnectionManager>
+            <SocketManager>{children}</SocketManager>
+          </RTCConnectionManager>
+        </StreamManager>
       </main>
       <footer>
         <a

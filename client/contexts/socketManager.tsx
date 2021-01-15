@@ -1,23 +1,26 @@
-import React, { FunctionComponent, useCallback, useEffect, useState } from 'react'
+import React, { FunctionComponent, useEffect, useState } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { useRtcConnections } from './rtcConnectionManager'
+import { useStream } from './streamManager'
 
 type SocketManagerContext = {
   room: RoomState
   joinRoom: (id: string) => void
   makeCall: () => void
   leaveCall: () => void
+  changePeerOutput: (id: string, output: boolean) => void
 }
 // defining the context with empty prices object
 export const SocketContext = React.createContext<SocketManagerContext>({
   room: {
     name: null,
-    self: { id: '', inCall: false },
+    self: { id: '', inCall: false, isOutputting: false },
     peers: [],
   },
   joinRoom: () => {},
   makeCall: () => {},
   leaveCall: () => {},
+  changePeerOutput: (id: string, output: boolean) => {},
 })
 
 // defining a useWebsocket hook for functional components
@@ -27,6 +30,7 @@ type SocketManagerProps = {}
 export type Peer = {
   id: string
   inCall: boolean
+  isOutputting: boolean
 }
 export type RoomState = {
   name: string | null
@@ -37,13 +41,14 @@ export type RoomState = {
 const socket: Socket = io('http://localhost:5000')
 
 export const SocketManager: FunctionComponent<SocketManagerProps> = ({ children }) => {
+  const streamMgr = useStream()
   const rtc = useRtcConnections()
-  const [roomState, setRoomState] = useState<RoomState>({ name: null, self: { id: socket.id, inCall: false }, peers: [] })
+  const [roomState, setRoomState] = useState<RoomState>({ name: null, self: { id: socket.id, inCall: false, isOutputting: false }, peers: [] })
 
   const joinedRoom = (roomName: string, peers: Peer[]) => {
     console.log(`you joined these peers in ${roomName}:`)
     console.log(peers)
-    setRoomState({ name: roomName, self: { id: socket.id, inCall: false }, peers: peers })
+    setRoomState({ name: roomName, self: { id: socket.id, inCall: false, isOutputting: false }, peers: peers })
   }
 
   const peerJoiningCall = async (peerId: string) => {
@@ -99,7 +104,7 @@ export const SocketManager: FunctionComponent<SocketManagerProps> = ({ children 
     console.log(`peer ${peerId} joined the room`)
     if (!roomState.peers.some((p) => p.id === peerId)) {
       const updatePeers = [...roomState.peers]
-      updatePeers.push({ id: peerId, inCall: false })
+      updatePeers.push({ id: peerId, inCall: false, isOutputting: false })
       setRoomState((prev) => ({ ...prev, peers: updatePeers }))
     }
   }
@@ -146,7 +151,7 @@ export const SocketManager: FunctionComponent<SocketManagerProps> = ({ children 
 
   const makeCall = async () => {
     console.log('you are joining the call')
-    await rtc.streamMic()
+    await streamMgr.streamMic(socket.id)
     socket.emit('join-call', roomState.name)
     setRoomState((prev) => {
       const newState = { ...prev }
@@ -157,7 +162,7 @@ export const SocketManager: FunctionComponent<SocketManagerProps> = ({ children 
 
   const leaveCall = () => {
     console.log('you are leaving the call')
-    rtc.stopMic()
+    streamMgr.stopMic(socket.id)
     socket.emit('leave-call', roomState.name)
     rtc.destroy()
     setRoomState((prev) => {
@@ -167,14 +172,22 @@ export const SocketManager: FunctionComponent<SocketManagerProps> = ({ children 
     })
   }
 
+  const changePeerOutput = (id: string, output: boolean) => {
+    const newState = { ...roomState }
+    if (newState.self.id === id) {
+      if (output != newState.self.isOutputting) newState.self.isOutputting = output
+      setRoomState(newState)
+    }
+  }
+
   useEffect(() => {
     initSocket()
 
     return () => {
       console.log('socketManager unmounted')
-      //socket?.disconnect()
+      socket?.disconnect()
     }
-  })
+  }, [socket])
 
   return (
     <SocketContext.Provider
@@ -183,6 +196,7 @@ export const SocketManager: FunctionComponent<SocketManagerProps> = ({ children 
         joinRoom,
         makeCall,
         leaveCall,
+        changePeerOutput,
       }}
     >
       {children}
