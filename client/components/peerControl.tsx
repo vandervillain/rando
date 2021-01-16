@@ -1,8 +1,7 @@
 import React, { CSSProperties, useEffect, useState } from 'react'
 import { useWebsocket } from '../contexts/socketManager'
 import { useStream } from '../contexts/streamManager'
-import Dragbar from './dragbar'
-import Visualizer from './visualizer'
+import DecibelControl from './decibelControl'
 
 type PeerControlProps = {
   peerId: string
@@ -10,18 +9,9 @@ type PeerControlProps = {
   isOutputting: boolean
 }
 
-type PeerControlState = {
-  gain: number
-  threshold: number
-}
-
 const PeerControl = ({ peerId, inCall, isOutputting }: PeerControlProps) => {
   const streamMgr = useStream()
   const ws = useWebsocket()
-  const [state, setState] = useState<PeerControlState>({
-    gain: 25,
-    threshold: 25,
-  })
   const renderMute = (id: string) => <button onClick={() => streamMgr.toggleStream(peerId)}>mute</button>
 
   const peerStyle = () => {
@@ -29,16 +19,6 @@ const PeerControl = ({ peerId, inCall, isOutputting }: PeerControlProps) => {
     properties.fontWeight = inCall ? 'bold' : 'normal'
     properties.boxShadow = inCall ? '0 0 3px 3px #999' : ''
     return properties
-  }
-
-  const onChangeThreshold = (p: number) => {
-    streamMgr.getStream(peerId)?.setThreshold(p / 100)
-    setState((prev) => ({ ...prev, threshold: p }))
-  }
-
-  const onChangeGain = (p: number) => {
-    streamMgr.getStream(peerId)?.setGain(p / 100)
-    setState((prev) => ({ ...prev, gain: p }))
   }
 
   const avatarStyle = () => {
@@ -61,11 +41,7 @@ const PeerControl = ({ peerId, inCall, isOutputting }: PeerControlProps) => {
       <img className='avatar' src='/images/avatar.png' alt={peerId} width='100px' height='100px' style={avatarStyle()} />
       <div className='username'>{peerId}</div>
       {inCall && (
-        <div className='threshold'>
-          <Visualizer id={peerId} />
-          <Dragbar initialValue={state.threshold} onChange={(p) => onChangeThreshold(p)} />
-          <Dragbar initialValue={state.gain} onChange={(p) => onChangeGain(p)} />
-        </div>
+        <DecibelControl peerId={peerId} />
       )}
       <div className='controls'>{renderMute(peerId)}</div>
       <style jsx>{`

@@ -1,16 +1,28 @@
 import { createRef, useState } from 'react'
 
 type DragbarProps = {
+  className: string
   initialValue: number
   onChange: (p: number) => void
 }
 
-const Dragbar = ({ initialValue, onChange }: DragbarProps) => {
+const Dragbar = ({ className, initialValue, onChange }: DragbarProps) => {
+  const getClassName = () => `dragbar ${className}`
 
   return (
-    <div className='dragbar'>
+    <div className={getClassName()}>
       <input type='range' min='1' max='100' value={initialValue} className='slider' onChange={(e) => onChange(parseInt(e.currentTarget.value))} />
       <style jsx>{`
+        .dragbar {
+          min-height: 0;
+          padding-bottom: 15px;
+          margin: 0;
+          line-height: 0px;
+        }
+        .dragbar input {
+          margin: 0;
+        }
+
         .slider {
           -webkit-appearance: none; /* Override default CSS styles */
           appearance: none;
@@ -24,23 +36,33 @@ const Dragbar = ({ initialValue, onChange }: DragbarProps) => {
         }
 
         .slider:hover {
-          opacity: 1;
+          opacity: 1;          
         }
 
         .slider::-webkit-slider-thumb {
           -webkit-appearance: none; /* Override default look */
           appearance: none;
-          width: 5px; /* Set a specific slider handle width */
-          height: 15px; /* Slider handle height */
-          background: #4caf50; /* Green background */
-          cursor: pointer; /* Cursor on hover */
+          cursor: pointer;
         }
 
         .slider::-moz-range-thumb {
-          width: 5px; /* Set a specific slider handle width */
-          height: 15px; /* Slider handle height */
-          background: #4caf50; /* Green background */
-          cursor: pointer; /* Cursor on hover */
+          cursor: pointer;
+        }
+
+        .threshold .slider::-webkit-slider-thumb {
+          background: #4caf50;
+          width: 5px;
+          height: 15px;
+          -webkit-clip-path: polygon(0 20%, 50% 0%, 100% 20%, 100% 100%, 0% 100%);
+          clip-path: polygon(0 20%, 50% 0%, 100% 20%, 100% 100%, 0% 100%);
+        }
+
+        .gain .slider::-webkit-slider-thumb {
+          background-color: #fc7303;
+          width: 20px;
+          height: 15px;
+          -webkit-clip-path: polygon(0 0%, 80% 0%, 100% 40%, 100% 60%, 80% 100%, 0% 100%);
+          clip-path: polygon(0 0%, 80% 0%, 100% 40%, 100% 60%, 80% 100%, 0% 100%);
         }
       `}</style>
     </div>

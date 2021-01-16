@@ -68,7 +68,7 @@ export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children 
       audio: {
         echoCancellation: true,
         noiseSuppression: true,
-        autoGainControl: true,
+        autoGainControl: false,
       },
     })
 
