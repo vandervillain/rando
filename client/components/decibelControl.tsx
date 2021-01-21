@@ -1,4 +1,6 @@
 import { createRef, useEffect, useState } from 'react'
+import { useAuthContext } from '../contexts/authManager'
+import { useDataContext } from '../contexts/dataManager'
 import { useStream } from '../contexts/streamManager'
 import Dragbar from './dragbar'
 
@@ -12,11 +14,12 @@ type DecibelControlState = {
 }
 
 const DecibelControl = ({ peerId }: DecibelControlProps) => {
-  const [state, setState] = useState<DecibelControlState>({
-    gain: 25,
-    threshold: 25,
-  })
+  const data = useDataContext()
   const streamMgr = useStream()
+  const [state, setState] = useState<DecibelControlState>({
+    gain: data.getUserData().settings.gain,
+    threshold: data.getUserData().settings.threshold,
+  })
   const visualizerRef = createRef<HTMLCanvasElement>()
   let canvas: HTMLCanvasElement | null
   let canvasCtx: CanvasRenderingContext2D | null
@@ -38,12 +41,14 @@ const DecibelControl = ({ peerId }: DecibelControlProps) => {
   }
 
   const onChangeThreshold = (p: number) => {
-    streamMgr.getStream(peerId)?.setThreshold(p / 100)
+    data.saveThreshold(p)
+    streamMgr.getStream(peerId)?.setThreshold(p)
     setState((prev) => ({ ...prev, threshold: p }))
   }
 
   const onChangeGain = (p: number) => {
-    streamMgr.getStream(peerId)?.setGain(p / 100)
+    data.saveGain(p)
+    streamMgr.getStream(peerId)?.setGain(p)
     setState((prev) => ({ ...prev, gain: p }))
   }
 

@@ -1,5 +1,6 @@
 import React, { FunctionComponent, useEffect, useState } from 'react'
 import { io, Socket } from 'socket.io-client'
+import { useDataContext } from './dataManager'
 import { useRtcConnections } from './rtcConnectionManager'
 import { useStream } from './streamManager'
 
@@ -10,7 +11,7 @@ type SocketManagerContext = {
   leaveCall: () => void
   changePeerOutput: (id: string, output: boolean) => void
 }
-// defining the context with empty prices object
+
 export const SocketContext = React.createContext<SocketManagerContext>({
   room: {
     name: null,
@@ -23,7 +24,6 @@ export const SocketContext = React.createContext<SocketManagerContext>({
   changePeerOutput: (id: string, output: boolean) => {},
 })
 
-// defining a useWebsocket hook for functional components
 export const useWebsocket = () => React.useContext(SocketContext)
 
 type SocketManagerProps = {}
@@ -41,6 +41,7 @@ export type RoomState = {
 const socket: Socket = io('http://localhost:5000')
 
 export const SocketManager: FunctionComponent<SocketManagerProps> = ({ children }) => {
+  const data = useDataContext()
   const streamMgr = useStream()
   const rtc = useRtcConnections()
   const [roomState, setRoomState] = useState<RoomState>({ name: null, self: { id: socket.id, inCall: false, isOutputting: false }, peers: [] })
@@ -151,7 +152,8 @@ export const SocketManager: FunctionComponent<SocketManagerProps> = ({ children 
 
   const makeCall = async () => {
     console.log('you are joining the call')
-    await streamMgr.streamMic(socket.id)
+    const userData = data.getUserData()
+    await streamMgr.streamMic(socket.id, userData.settings)
     socket.emit('join-call', roomState.name)
     setRoomState((prev) => {
       const newState = { ...prev }
@@ -168,6 +170,7 @@ export const SocketManager: FunctionComponent<SocketManagerProps> = ({ children 
     setRoomState((prev) => {
       const newState = { ...prev }
       newState.self.inCall = false
+      newState.self.isOutputting = false
       return newState
     })
   }

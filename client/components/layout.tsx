@@ -1,5 +1,7 @@
 import Head from 'next/head'
 import React, { FunctionComponent } from 'react'
+import { AuthManager } from '../contexts/authManager'
+import { DataManager } from '../contexts/dataManager'
 import { RTCConnectionManager } from '../contexts/rtcConnectionManager'
 import { SocketManager } from '../contexts/socketManager'
 import { StreamManager } from '../contexts/streamManager'
@@ -12,11 +14,15 @@ const Layout: FunctionComponent = ({ children }) => {
         <link rel='icon' href='/favicon.ico' />
       </Head>
       <main>
-        <StreamManager>
-          <RTCConnectionManager>
-            <SocketManager>{children}</SocketManager>
-          </RTCConnectionManager>
-        </StreamManager>
+        <DataManager>
+          <AuthManager>
+            <StreamManager>
+              <RTCConnectionManager>
+                <SocketManager>{children}</SocketManager>
+              </RTCConnectionManager>
+            </StreamManager>
+          </AuthManager>
+        </DataManager>
       </main>
       <footer>
         <a

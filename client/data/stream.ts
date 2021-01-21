@@ -1,3 +1,7 @@
+export type StreamOptions = {
+  threshold: number,
+  gain: number
+}
 export class PeerStream {
   public id: string
   public stream: MediaStream
@@ -9,8 +13,7 @@ export class PeerStream {
   private thresholdAnalyser: ThresholdAnalyser
   private muteNode: GainNode
   private audioRef?: React.RefObject<HTMLAudioElement>
-  private maxGain = 5
-  private initialThreshold = 0.25 // percent
+  private maxGain = 10
   private lastPassthrough = new Date().getTime()
   private applyDynamicThreshold = () => {
     const check = (p: number) => {
@@ -34,15 +37,15 @@ export class PeerStream {
     this.thresholdAnalyser.unsubscribe('dynamicThreshold')
   }
 
-  constructor(id: string, stream: MediaStream) {
+  constructor(id: string, stream: MediaStream, options: StreamOptions) {
     this.id = id
     this.stream = stream
     this.audioCtx = new AudioContext()
     this.gainNode = new GainNode(this.audioCtx, {
-      gain: 1,
+      gain: options.gain * this.maxGain,
     })
     this.analyser = new BaseAnalyser(this.audioCtx)
-    this.thresholdAnalyser = new ThresholdAnalyser(this.audioCtx, this.initialThreshold)
+    this.thresholdAnalyser = new ThresholdAnalyser(this.audioCtx, options.threshold)
     this.muteNode = new GainNode(this.audioCtx, {
       gain: 1,
     })
@@ -190,6 +193,5 @@ export class ThresholdAnalyser extends BaseAnalyser {
 
   setThreshold = (percent: number) => {
     this.node.minDecibels = this.percentToThreshold(percent)
-    console.log(`threshold = ${this.node.minDecibels}db`)
   }
 }

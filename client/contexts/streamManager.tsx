@@ -1,29 +1,27 @@
 import React, { FunctionComponent, useEffect } from 'react'
-import { AnalyserFormat, PeerStream } from '../data/stream'
+import { AnalyserFormat, PeerStream, StreamOptions } from '../data/stream'
 
 type StreamManagerContext = {
   getStream: (id: string) => PeerStream | undefined
-  addStream: (id: string, mediaStream: MediaStream) => PeerStream
+  addStream: (id: string, mediaStream: MediaStream, options: StreamOptions) => PeerStream
   toggleStream: (id: string) => void
-  stopStream: (id: string) => void
   connectVisualizer: (id: string, callback: (p: number) => void) => void
   disconnectVisualizer: (id: string) => void
   connectIsStreamingVolume: (id: string, callback: (output: boolean) => void) => void
   disconnectIsStreamingVolume: (id: string) => void
-  streamMic: (id: string) => void
+  streamMic: (id: string, streamOptions: StreamOptions) => void
   stopMic: (id: string) => void
 }
 
 export const StreamContext = React.createContext<StreamManagerContext>({
   getStream: (id: string) => undefined,
-  addStream: (id: string, mediaStream: MediaStream) => new PeerStream('', new MediaStream()),
+  addStream: (id: string, mediaStream: MediaStream, options: StreamOptions) => new PeerStream('', new MediaStream(), options),
   toggleStream: (id: string) => {},
-  stopStream: (id: string) => {},
   connectVisualizer: (id: string, callback: (p: number) => void) => {},
   disconnectVisualizer: (id: string) => {},
   connectIsStreamingVolume: (id: string, callback: (output: boolean) => void) => {},
   disconnectIsStreamingVolume: (id: string) => {},
-  streamMic: (id: string) => {},
+  streamMic: (id: string, streamOptions: StreamOptions) => {},
   stopMic: (id: string) => {},
 })
 
@@ -37,17 +35,17 @@ export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children 
   const incomingAudioRef = React.createRef<HTMLAudioElement>()
 
   const getStream = (id: string) => streams.find((s) => s.id === id)
-  const addStream = (id: string, mediaStream: MediaStream) => {
-    const stream = new PeerStream(id, mediaStream)
+  const addStream = (id: string, mediaStream: MediaStream, streamOptions: StreamOptions) => {
+    const stream = new PeerStream(id, mediaStream, streamOptions)
     streams.push(stream)
     return stream
   }
   const toggleStream = (id: string) => (getStream(id)?.isEnabled() ? getStream(id)?.mute() : getStream(id)?.unmute())
-  const stopStream = (id: string) => {
+  const destroyStream = (id: string) => {
     const stream = getStream(id)
     stream?.stop()
     stream?.disconnect()
-    return stream
+    streams = streams.filter(s => s.id !== id)
   }
   const connectVisualizer = (id: string, callback: (p: number) => void) => {
     getStream(id)?.subscribeToAnalyser(AnalyserFormat.Percent, callback)
@@ -62,7 +60,7 @@ export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children 
     getStream(id)?.unsubscribeFromThresholdAnalyser()
   }
 
-  const streamMic = async (id: string) => {
+  const streamMic = async (id: string, streamOptions: StreamOptions) => {
     const localStream = await window.navigator.mediaDevices.getUserMedia({
       video: false,
       audio: {
@@ -72,12 +70,12 @@ export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children 
       },
     })
 
-    const peerStream = addStream(id, localStream)
+    const peerStream = addStream(id, localStream, streamOptions)
     peerStream.connect(outgoingAudioRef)
   }
 
   const stopMic = (id: string) => {
-    stopStream(id)
+    destroyStream(id)
     if (outgoingAudioRef.current) outgoingAudioRef.current.srcObject = null
   }
 
@@ -94,7 +92,6 @@ export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children 
         getStream,
         addStream,
         toggleStream,
-        stopStream,
         connectVisualizer,
         disconnectVisualizer,
         connectIsStreamingVolume,

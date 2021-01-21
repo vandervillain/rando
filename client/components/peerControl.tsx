@@ -1,4 +1,5 @@
 import React, { CSSProperties, useEffect, useState } from 'react'
+import { useAuthContext } from '../contexts/authManager'
 import { useWebsocket } from '../contexts/socketManager'
 import { useStream } from '../contexts/streamManager'
 import DecibelControl from './decibelControl'
@@ -10,6 +11,7 @@ type PeerControlProps = {
 }
 
 const PeerControl = ({ peerId, inCall, isOutputting }: PeerControlProps) => {
+  const auth = useAuthContext()
   const streamMgr = useStream()
   const ws = useWebsocket()
   const renderMute = (id: string) => <button onClick={() => streamMgr.toggleStream(peerId)}>mute</button>
@@ -37,19 +39,19 @@ const PeerControl = ({ peerId, inCall, isOutputting }: PeerControlProps) => {
   }, [inCall])
 
   return (
-    <div className='peer' key={peerId} style={peerStyle()}>
+    <div className='peer-control' key={peerId} style={peerStyle()}>
       <img className='avatar' src='/images/avatar.png' alt={peerId} width='100px' height='100px' style={avatarStyle()} />
-      <div className='username'>{peerId}</div>
+      <div className='username'>{auth.getUser()?.name}</div>
       {inCall && (
         <DecibelControl peerId={peerId} />
       )}
       <div className='controls'>{renderMute(peerId)}</div>
       <style jsx>{`
-        .peer {
+        .peer-control {
           display: grid;
           grid-template-areas:
             'avatar username username username'
-            'avatar threshold threshold controls';
+            'avatar decibels decibels controls';
           grid-gap: 10px;
           background-color: #444;
           padding: 10px;
@@ -62,17 +64,17 @@ const PeerControl = ({ peerId, inCall, isOutputting }: PeerControlProps) => {
           padding: 20px 0;
           font-size: 30px;
         }
-        .peer img.avatar {
+        img.avatar {
           border-radius: 50%;
           grid-area: avatar;
         }
-        .peer .username {
+        .username {
           grid-area: username;
         }
-        .peer .threshold {
+        .decibels {
           grid-area: threshold;
         }
-        .peer .controls {
+        .controls {
           grid-area: controls;
         }
       `}</style>
