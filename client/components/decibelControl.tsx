@@ -1,11 +1,11 @@
 import { createRef, useEffect, useState } from 'react'
-import { useAuthContext } from '../contexts/authManager'
 import { useDataContext } from '../contexts/dataManager'
 import { useStream } from '../contexts/streamManager'
 import Dragbar from './dragbar'
 
 type DecibelControlProps = {
   peerId: string
+  inCall: boolean
 }
 
 type DecibelControlState = {
@@ -13,7 +13,7 @@ type DecibelControlState = {
   threshold: number
 }
 
-const DecibelControl = ({ peerId }: DecibelControlProps) => {
+const DecibelControl = ({ peerId, inCall }: DecibelControlProps) => {
   const data = useDataContext()
   const streamMgr = useStream()
   const [state, setState] = useState<DecibelControlState>({
@@ -67,7 +67,7 @@ const DecibelControl = ({ peerId }: DecibelControlProps) => {
       console.log('visualiser useEffect unmounted')
       streamMgr.disconnectVisualizer(peerId)
     }
-  }, [])
+  }, [inCall])
 
   return (
     <div className='decibel-control'>

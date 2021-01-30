@@ -24,7 +24,7 @@ const defaultUserData = () => ({
   },
 })
 
-export const DataManagerContext = React.createContext<DataContext>({
+const DataManagerContext = React.createContext<DataContext>({
   getUserData: () => defaultUserData(),
   saveUser: (user: User) => {},
   saveThreshold: (t: number) => {},
@@ -38,10 +38,11 @@ export const DataManager: FunctionComponent = ({ children }) => {
   const datakey = 'userData'
 
   const getUserData = () => {
-    if (!userData && typeof window !== 'undefined') {
+    if (userData) return userData
+    if (typeof window !== 'undefined') {
       const cachedUser = localStorage.getItem(datakey)
       if (cachedUser) {
-        return JSON.parse(cachedUser) as UserData
+        userData = JSON.parse(cachedUser) as UserData
       }
     }
     if (!userData) userData = defaultUserData()

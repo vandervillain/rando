@@ -1,25 +1,27 @@
 import React, { useState } from 'react'
+import { useAuthContext } from '../contexts/authManager'
 
 type LoginProps = {
-  login: (username: string) => void
+  redirect: string
 }
 
-const Login = ({ login }: LoginProps) => {
+const LoginControl = ({ redirect }: LoginProps) => {
   const [error, setError] = useState<boolean>(false)
   const usernameRef = React.createRef<HTMLInputElement>()
+  const auth = useAuthContext()
 
-  const onClick = (e: React.MouseEvent) => {
+  const submit = () => {
     const value = usernameRef.current?.value
     if (!value) setError(true)
-    else login(value)
+    else auth.login(value, redirect)
   }
 
   const getClass = () => (error ? 'error' : '')
 
   return (
     <div className='login'>
-      <input ref={usernameRef} className={getClass()} type='text' placeholder='enter user name' />
-      <button onClick={onClick}>Start</button>
+      <input ref={usernameRef} onSubmit={submit} className={getClass()} type='text' placeholder='enter user name' />
+      <button onClick={submit}>Start</button>
       <style jsx>{`
         input.error {
           border-box: 0 0 2px 2px red;
@@ -29,4 +31,4 @@ const Login = ({ login }: LoginProps) => {
   )
 }
 
-export default Login
+export default LoginControl

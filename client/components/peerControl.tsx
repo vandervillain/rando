@@ -1,51 +1,54 @@
-import React, { CSSProperties, useEffect, useState } from 'react'
-import { useAuthContext } from '../contexts/authManager'
-import { useWebsocket } from '../contexts/socketManager'
+import React, { CSSProperties, useEffect } from 'react'
+import { RoomPeer, useRoomContext } from '../contexts/roomManager'
 import { useStream } from '../contexts/streamManager'
 import DecibelControl from './decibelControl'
 
 type PeerControlProps = {
-  peerId: string
-  inCall: boolean
-  isOutputting: boolean
+  peer: RoomPeer
+  isCurrUser: boolean
 }
 
-const PeerControl = ({ peerId, inCall, isOutputting }: PeerControlProps) => {
-  const auth = useAuthContext()
+const PeerControl = ({ peer, isCurrUser }: PeerControlProps) => {
   const streamMgr = useStream()
-  const ws = useWebsocket()
-  const renderMute = (id: string) => <button onClick={() => streamMgr.toggleStream(peerId)}>mute</button>
+  const roomMgr = useRoomContext()
 
   const peerStyle = () => {
     const properties = {} as CSSProperties
-    properties.fontWeight = inCall ? 'bold' : 'normal'
-    properties.boxShadow = inCall ? '0 0 3px 3px #999' : ''
+    properties.fontWeight = peer.inCall ? 'bold' : 'normal'
+    properties.boxShadow = peer.inCall ? '0 0 3px 3px #999' : ''
     return properties
   }
 
   const avatarStyle = () => {
     const style: CSSProperties = {}
-    if (isOutputting) style.boxShadow = '0 0 5px 5px #4caf50'
+    if (peer.isOutputting) style.boxShadow = '0 0 5px 5px #4caf50'
     return style
   }
 
+  const renderMute = (id: string) =>
+    peer.isMuted ? (
+      <button onClick={() => roomMgr.setIsMuted(peer.id, false)}>unmute</button>
+    ) : (
+      <button onClick={() => roomMgr.setIsMuted(peer.id, true)}>mute</button>
+    )
+
   useEffect(() => {
-    console.log(`peerControl useEffect`)
-    if (inCall) streamMgr.connectIsStreamingVolume(peerId, (o) => ws.changePeerOutput(peerId, o))
+    if (peer.inCall) streamMgr.connectIsStreamingVolume(peer.id, o => roomMgr.userOutputUpdate(peer.id, o))
 
     return () => {
-      if (!inCall) streamMgr.disconnectIsStreamingVolume(peerId)
+      if (!peer.inCall) streamMgr.disconnectIsStreamingVolume(peer.id)
     }
-  }, [inCall])
+  }, [peer.inCall])
 
   return (
-    <div className='peer-control' key={peerId} style={peerStyle()}>
-      <img className='avatar' src='/images/avatar.png' alt={peerId} width='100px' height='100px' style={avatarStyle()} />
-      <div className='username'>{auth.getUser()?.name}</div>
-      {inCall && (
-        <DecibelControl peerId={peerId} />
+    <div className='peer-control' key={peer.id} style={peerStyle()}>
+      <img className='avatar' src='/images/avatar.png' alt={peer.id} width='100px' height='100px' style={avatarStyle()} />
+      <div className='username'>{roomMgr.getPeerById(peer.id)?.name}</div>
+      {peer.inCall && <DecibelControl peerId={peer.id} inCall={peer.inCall} />}
+      <div className='controls'>{renderMute(peer.id)}</div>
+      {!isCurrUser && (
+        <audio autoPlay hidden></audio>
       )}
-      <div className='controls'>{renderMute(peerId)}</div>
       <style jsx>{`
         .peer-control {
           display: grid;

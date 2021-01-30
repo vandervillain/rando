@@ -1,4 +1,5 @@
 import React, { FunctionComponent, useEffect } from 'react'
+import { useAuthContext } from './authManager'
 import { useStream } from './streamManager'
 
 type RTCConnectionManagerContext = {
@@ -9,7 +10,7 @@ type RTCConnectionManagerContext = {
   destroy: () => void
 }
 
-export const RTCConnectionContext = React.createContext<RTCConnectionManagerContext>({
+const RTCConnectionContext = React.createContext<RTCConnectionManagerContext>({
   addConnection: (id: string, onIceCanidate: (id: string, c: RTCIceCandidate) => void) => null,
   removeConnection: (id: string) => {},
   getConnection: (id: string) => undefined,
@@ -32,6 +33,7 @@ interface PeerConnection {
 let rtcPeerConnections: PeerConnection[] = []
 
 export const RTCConnectionManager: FunctionComponent<RTCConnectionManagerProps> = ({ children }) => {
+  const auth = useAuthContext()
   const streamMgr = useStream()
 
   const getRtcPeerConnection = (id: string) => rtcPeerConnections.find((p) => p.peerId === id)
@@ -44,13 +46,15 @@ export const RTCConnectionManager: FunctionComponent<RTCConnectionManagerProps> 
     ;(pc as any).notifyWs = onIceCandidate
 
     // Now add your local media stream tracks to the connection
-    const outgoingStream = streamMgr.getStream(id)!.stream
+    const userId = auth.getUser()!.id
+    const outgoingStream = streamMgr.getStream(userId)!.stream!
     outgoingStream.getAudioTracks().forEach((track: MediaStreamTrack) => {
       pc.addTrack(track, outgoingStream)
     })
 
     pc.ontrack = ({ streams: [stream] }) => {
-      streamMgr.addStream((pc as any).peerId, stream)
+      const peerStream = streamMgr.addStream((pc as any).peerId)!
+      peerStream.connect()
       //if (incomingAudioRef.current) incomingAudioRef.current.srcObject = stream
     }
 

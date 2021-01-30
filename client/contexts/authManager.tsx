@@ -1,12 +1,14 @@
-import React, { FunctionComponent, useState } from 'react'
-import Login from '../components/login'
+import { useRouter } from 'next/router'
+import React, { FunctionComponent, useEffect, useState } from 'react'
 import { useDataContext } from './dataManager'
 
 type AuthContext = {
+  login: (name: string, redirect: string) => void
   getUser: () => User | null
 }
 
-export const AuthManagerContext = React.createContext<AuthContext>({
+const AuthManagerContext = React.createContext<AuthContext>({
+  login: (name: string, redirect: string) => {},
   getUser: () => null,
 })
 
@@ -24,6 +26,17 @@ export type User = {
 export const AuthManager: FunctionComponent = ({ children }) => {
   const [authState, setAuthState] = useState<AuthContextState>({ user: null })
   const data = useDataContext()
+  const router = useRouter()
+
+  const login = (name: string, redirect: string) => {
+    const user: User = {
+      id: randId(),
+      name: name,
+    }
+    setUser(user)
+
+    router.push(redirect)
+  }
 
   const getUser = () => {
     if (authState.user) return authState.user
@@ -37,24 +50,20 @@ export const AuthManager: FunctionComponent = ({ children }) => {
 
   const randId = () => '_' + Math.random().toString(36).substr(2, 9)
 
-  const loginUser = (username: string) => {
-    const user: User = {
-      id: randId(),
-      name: username,
+  useEffect(() => {
+    if (!getUser()) {
+      router.push(`/login?redirect=${router.pathname}`)
     }
-    setUser(user)
-  }
+  }, [authState.user])
 
   return (
     <AuthManagerContext.Provider
       value={{
+        login,
         getUser,
       }}
     >
-      <>
-        {children}
-        {!getUser() && <Login login={loginUser} />}
-      </>
+      {children}
     </AuthManagerContext.Provider>
   )
 }

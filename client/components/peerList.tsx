@@ -1,18 +1,19 @@
-import { Peer } from '../contexts/socketManager'
+import { RoomPeer } from '../contexts/roomManager'
 import PeerControl from './peerControl'
 
 type PeerListProps = {
-  peers: Peer[]
+  peers: RoomPeer[],
+  currUserId: string
 }
 
-const PeerList = ({ peers }: PeerListProps) => {
+const PeerList = ({ peers, currUserId }: PeerListProps) => {
 
   return (
     <div className='peer-list'>
       {peers &&
         peers.filter(p => p.id).map((p) => {
           return (
-            <PeerControl key={p.id} peerId={p.id} inCall={p.inCall} isOutputting={p.isOutputting} />
+            <PeerControl key={p.id} peer={p} isCurrUser={currUserId === p.id} />
           )
         })}
     </div>

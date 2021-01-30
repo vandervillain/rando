@@ -1,5 +1,10 @@
 {
   "files.exclude": {
     "**/.next": true,
-  }
+  },
+  "prettier.arrowParens": "avoid",
+  "prettier.jsxSingleQuote": true,
+  "prettier.packageManager": "yarn",
+  "prettier.semi": false,
+  "prettier.singleQuote": true
 }

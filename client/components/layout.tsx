@@ -3,7 +3,6 @@ import React, { FunctionComponent } from 'react'
 import { AuthManager } from '../contexts/authManager'
 import { DataManager } from '../contexts/dataManager'
 import { RTCConnectionManager } from '../contexts/rtcConnectionManager'
-import { SocketManager } from '../contexts/socketManager'
 import { StreamManager } from '../contexts/streamManager'
 
 const Layout: FunctionComponent = ({ children }) => {
@@ -17,9 +16,7 @@ const Layout: FunctionComponent = ({ children }) => {
         <DataManager>
           <AuthManager>
             <StreamManager>
-              <RTCConnectionManager>
-                <SocketManager>{children}</SocketManager>
-              </RTCConnectionManager>
+              <RTCConnectionManager>{children}</RTCConnectionManager>
             </StreamManager>
           </AuthManager>
         </DataManager>
