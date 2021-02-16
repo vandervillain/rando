@@ -1,35 +1,21 @@
-import React, { FunctionComponent, useEffect, useState } from 'react'
+import React, { FunctionComponent, useCallback, useEffect, useMemo, useRef } from 'react'
+import { useRecoilState, useRecoilValue } from 'recoil'
+import { io, Socket } from 'socket.io-client'
+import LoginControl from '../components/loginControl'
 import RoomControl from '../components/roomControl'
-import { useAuthContext } from './authManager'
-import { useDataContext } from './dataManager'
 import { useRtcConnections } from './rtcConnectionManager'
-import { ActiveUser, useWebsocket } from './socketManager'
-import { useStream } from './streamManager'
+import { roomPeerSelect, roomState, userSelect } from '../data/atoms'
+import { useStreamContext } from './streamManager'
+import { Room, RoomPeer } from '../data/types'
 
 type RoomManagerContext = {
-  getSelf: () => RoomPeer | null
-  getRoom: () => Room | null
   joinCall: () => void
   leaveCall: () => void
-  joinedRoom: (user: ActiveUser, peers: RoomPeer[]) => void
-  peerJoinedRoom: (user: ActiveUser) => void
-  peerLeftRoom: (user: ActiveUser) => void
-  userOutputUpdate: (id: string, output: boolean) => void
-  setIsMuted: (id: string, mute: boolean) => void
-  getPeerById: (id: string) => RoomPeer | null
 }
 
 const RoomContext = React.createContext<RoomManagerContext>({
-  getSelf: () => null,
-  getRoom: () => null,
   joinCall: () => {},
   leaveCall: () => {},
-  joinedRoom: (user: ActiveUser, peers: RoomPeer[]) => {},
-  peerJoinedRoom: (user: ActiveUser) => {},
-  peerLeftRoom: (user: ActiveUser) => {},
-  userOutputUpdate: (id: string, output: boolean) => {},
-  setIsMuted: (id: string, mute: boolean) => {},
-  getPeerById: (id: string) => null,
 })
 
 export const useRoomContext = () => React.useContext(RoomContext)
@@ -38,240 +24,171 @@ type RoomManagerProps = {
   roomId: string
 }
 
-export interface RoomPeer extends ActiveUser {
-  isOutputting?: boolean
-  isMuted?: boolean
-}
-
-export type Room = {
-  name: string | null
-  peers: RoomPeer[]
-}
-
-let _self: RoomPeer | null = null
+let socket: Socket = io('http://localhost:5000')
 export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId, children }) => {
-  const [room, setRoom] = useState<Room | null>(null)
-  const data = useDataContext()
-  const auth = useAuthContext()
-  const streamMgr = useStream()
+  const user = useRecoilValue(userSelect)
+  const [room, setRoom] = useRecoilState(roomState)
+  const roomPeer = useRecoilValue(roomPeerSelect(user?.id))
+  const roomS = useRef<Room | null>(room)
+  const roomPeerS = useRef<RoomPeer | null>(roomPeer)
+  const { streamMic, stopMic, removeStream, muteUnmute } = useStreamContext()
   const rtc = useRtcConnections()
-  const ws = useWebsocket()
 
-  const getSelf = (newState?: Room) => {
-    if (_self) return _self
-    const userId = auth.getUser()?.id
-    if (userId && (newState || room)) _self = (newState ?? room)!.peers.find(p => p.id === userId) ?? null
-    return _self
-  }
-
-  const getRoom = () => room
-
-  const joinedRoom = (user: ActiveUser, peers: ActiveUser[]) => {
-    console.log(`you joined these peers in ${user.room}:`)
+  const onJoinedRoom = (user: RoomPeer, peers: RoomPeer[]) => {
+    console.log(`you joined these peers in ${user.room!.name}:`)
     console.log(peers)
-    const self: RoomPeer = {
-      ...user,
-      isOutputting: false,
-      isMuted: false,
+    setRoom({ name: user.room!.name, peers: [user, ...peers] })
+  }
+
+  const onPeerJoinedRoom = (peer: RoomPeer) => {
+    console.log(`peer ${peer.name} joined the room`)
+    if (roomS.current) {
+      if (!roomS.current.peers.some(p => p.id === peer.id)) {
+        const updatePeers = [...roomS.current.peers, peer]
+        setRoom({ ...roomS.current, peers: updatePeers })
+      }
     }
-    const roomPeers: RoomPeer[] = peers.map(u => ({ ...u, isOutputting: false, isMuted: false }))
-    setRoom({ name: user.room, peers: [self, ...peers] })
   }
 
-  const peerJoinedRoom = (user: ActiveUser) => {
-    console.log(`peer ${user.name} joined the room`)
-    setRoom(prev => {
-      if (prev && !prev.peers.some(p => p.id === user.id)) {
-        const updatePeers = [...prev.peers]
-        updatePeers.push({ ...user, isOutputting: false })
-        return { name: prev.name, peers: updatePeers }
-      }
-      return prev
-    })
-  }
-
-  const peerLeftRoom = (user: ActiveUser) => {
-    console.log(`peer ${user.name} left the room`)
-    rtc.removeConnection(user.id)
-    setRoom(prev => {
-      if (prev) {
-        const peerUpdate = [...prev.peers]
-        return { name: prev.name, peers: peerUpdate.filter(p => p.id !== user.id) }
-      }
-      return prev
-    })
+  const onPeerLeftRoom = (peer: RoomPeer) => {
+    console.log(`peer ${peer.name} left the room`)
+    rtc.removeConnection(peer.id)
+    if (roomS.current) {
+      const peerUpdate = [...roomS.current.peers].filter(p => p.id !== peer.id)
+      setRoom({ ...roomS.current, peers: peerUpdate})
+    }
   }
 
   const setInCall = (id: string, inCall: boolean) => {
-    setRoom(prev => {
-      if (prev) {
-        const peerUpdate = [...prev.peers]
-        const peer = peerUpdate.find(p => p.id === id)
-        if (peer) {
-          peer.inCall = inCall
-          if (!inCall) peer.isOutputting = false
-          return { name: prev.name, peers: peerUpdate } as Room
-        }
+    if (roomS.current) {
+      const peer = roomS.current.peers.find(p => p.id === id)
+      if (peer) {
+        const update: RoomPeer = { ...peer, inCall: inCall }
+        const peersUpdate = [update, ...roomS.current.peers.filter(p => p.id !== id)]
+        setRoom({ name: roomS.current.name, peers: peersUpdate})
       }
-      return prev
-    })
-  }
-
-  const setIsMuted = (id: string, mute: boolean) => {
-    streamMgr.muteUnmute(id, mute)
-    setRoom(prev => {
-      if (prev) {
-        const peerUpdate = [...prev.peers]
-        const peer = peerUpdate.find(p => p.id === id)
-        if (peer) {
-          peer.isMuted = mute
-          return { name: prev.name, peers: peerUpdate } as Room
-        }
-      }
-      return prev
-    })
+    }
   }
 
   const initConnection = (userId: string, iceCandidate: (id: string, candidate: RTCIceCandidate) => void) => {
     const peerConnection = rtc.addConnection(userId, iceCandidate)?.conn
-    streamMgr.addStream(userId)
     return peerConnection
   }
 
-  const peerJoiningCall = async (user: ActiveUser) => {
-    console.log(`${user.name} is joining the call`)
+  const onPeerJoiningCall = async (peer: RoomPeer) => {
+    if (!socket) return
+    console.log(`${peer.name} is joining the call`)
 
     // if current user is in call too, then start up connection workflow
-    if (getSelf()?.inCall) {
-      const peerConnection = initConnection(user.id, ws.sendCandidate)
+    if (roomPeerS.current?.inCall) {
+      const peerConnection = initConnection(peer.id, sendCandidate)
 
       if (peerConnection) {
         // send the new peer an offer to connect
         const offer = await peerConnection.createOffer()
         await peerConnection.setLocalDescription(offer)
-        ws.sendOffer(user.id, offer)
+        socket.emit('offer', peer.id, offer)
       }
     }
 
     // need to highlight that the peer is in call in UI
-    setInCall(user.id, true)
+    setInCall(peer.id, true)
   }
 
-  const peerLeftCall = (user: ActiveUser) => {
-    console.log(`peer ${user.name} left the call`)
-    rtc.removeConnection(user.id)
-    setInCall(user.id, false)
+  const onPeerLeftCall = (peer: RoomPeer) => {
+    console.log(`peer ${peer.name} left the call`)
+    rtc.removeConnection(peer.id)
+    removeStream(peer.id)
+    setInCall(peer.id, false)
   }
 
-  const receivedOffer = async (user: ActiveUser, offer: RTCSessionDescriptionInit) => {
-    console.log(`offer received from ${user.id}`)
-    const peerConnection = initConnection(user.id, rtc.addIceCandidate)
+  const onOffer = async (peer: RoomPeer, offer: RTCSessionDescriptionInit) => {
+    if (!socket) return
+    console.log(`offer received from ${peer.id}`)
+    const peerConnection = initConnection(peer.id, rtc.addIceCandidate)
     if (peerConnection) {
       await peerConnection.setRemoteDescription(new RTCSessionDescription(offer))
       const answer = await peerConnection.createAnswer()
       await peerConnection.setLocalDescription(answer)
-      ws.sendAnswer(user.id, answer)
+      socket.emit('answer', peer.id, answer)
     }
   }
 
-  const receivedAnswer = async (user: ActiveUser, answer: RTCSessionDescriptionInit) => {
-    console.log(`answer received from ${user.id}`)
-    const peerConnection = rtc.getConnection(user.id)?.conn
+  const onAnswer = async (peer: RoomPeer, answer: RTCSessionDescriptionInit) => {
+    console.log(`answer received from ${peer.id}`)
+    const peerConnection = rtc.getConnection(peer.id)?.conn
     if (peerConnection) await peerConnection.setRemoteDescription(new RTCSessionDescription(answer))
   }
 
-  const receivedCandidate = (id: string, candidate: RTCIceCandidate) => rtc.addIceCandidate(id, candidate)
+  const onCandidate = (id: string, candidate: RTCIceCandidate) => rtc.addIceCandidate(id, candidate)
 
   const joinCall = async () => {
-    const settings = data.getUserData()?.settings
-    console.log('you are joining the call')
-
-    await streamMgr.streamMic(getSelf()!.id, settings)
-    ws.joinCall(roomId)
-
-    setInCall(getSelf()!.id, true)
+    if (user && roomS.current && socket) {
+      console.log('you are joining the call')
+      await streamMic(user.id)
+      socket?.emit('join-call', roomS.current.name)
+      setInCall(user.id, true)
+    }
   }
 
   const leaveCall = () => {
-    const self = getSelf()
-    if (self) {
+    if (user && roomS.current && socket) {
       console.log('you are leaving the call')
-      streamMgr.stopMic(self.id)
+      stopMic(user.id)
       rtc.destroy()
-      ws.leaveCall(roomId)
-
-      setInCall(getSelf()!.id, false)
+      socket.emit('leave-call', roomS.current.name)
+      setInCall(user.id, false)
     }
   }
 
-  const userOutputUpdate = (id: string, output: boolean) => {
-    setRoom(prev => {
-      if (prev) {
-        const peerUpdate = [...prev.peers]
-        const peer = peerUpdate.find(p => p.id === id)
-        if (peer) {
-          if (output != peer.isOutputting) peer.isOutputting = output
-          return { name: prev.name, peers: peerUpdate }
-        }
-      }
-      return prev
-    })
+  const subscribe = () => {
+    socket.off('joined-room').on('joined-room', onJoinedRoom)
+    socket.off('peer-joining-call').on('peer-joining-call', onPeerJoiningCall)
+    socket.off('offer').on('offer', onOffer)
+    socket.off('answer').on('answer', onAnswer)
+    socket.off('candidate').on('candidate', onCandidate)
+    socket.off('peer-joined-room').on('peer-joined-room', onPeerJoinedRoom)
+    socket.off('peer-left-room').on('peer-left-room', onPeerLeftRoom)
+    socket.off('peer-left-call').on('peer-left-call', onPeerLeftCall)
   }
 
-  const getPeerById = (id: string) => {
-    if (room) {
-      const self = getSelf()
-      if (self && self.id === id) return self
-      else return room.peers.find(p => p.id === id) ?? null
-    }
-    return null
+  const sendCandidate = (id: string, candidate: RTCIceCandidate) => {
+    socket.emit('candidate', id, candidate)
   }
 
   useEffect(() => {
-    if (roomId) {
-      const user = auth.getUser()
-      if (user) {
-        ws.subscribe(
-          {
-            onJoinedRoom: joinedRoom,
-            onPeerJoinedRoom: peerJoinedRoom,
-            onPeerLeftRoom: peerLeftRoom,
-            onPeerJoiningCall: peerJoiningCall,
-            onPeerLeftCall: peerLeftCall,
-            onOffer: receivedOffer,
-            onAnswer: receivedAnswer,
-            onCandidate: receivedCandidate,
-          },
-          user.id,
-          user.name,
-          roomId
-        )
-      }
+    roomS.current = room
+    roomPeerS.current = room && user ? room.peers.find(p => p.id === user.id) ?? null : null
+  })
+
+  useEffect(() => {
+    if (socket) subscribe()
+    return () => {
+      socket?.disconnect()
+    }
+  }, [socket])
+
+  useEffect(() => {
+    if (roomId && user && socket) {
+      console.log('you are joining room ' + roomId)
+      socket.emit('join-room', user.id, user.name, roomId)
     }
     return () => {
-      if (!roomId) {
+      if (!roomId && socket) {
         rtc.destroy()
-        ws.disconnect()
       }
     }
-  }, [roomId])
+  }, [roomId, user, socket])
 
   return (
     <RoomContext.Provider
       value={{
-        getSelf,
-        getRoom,
         joinCall,
-        leaveCall,
-        joinedRoom,
-        peerJoinedRoom,
-        peerLeftRoom,
-        userOutputUpdate,
-        setIsMuted,
-        getPeerById,
+        leaveCall
       }}
     >
-      <RoomControl room={room} />
+      {user && <RoomControl />}
+      {!user && <LoginControl />}
     </RoomContext.Provider>
   )
 }

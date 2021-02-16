@@ -1,27 +1,23 @@
 import React from 'react'
-import { Room, useRoomContext } from '../contexts/roomManager'
+import { useRecoilValue } from 'recoil'
+import { useRoomContext } from '../contexts/roomManager'
+import { roomSelect } from '../data/atoms'
 import CallControl from './callControl'
 import PeerList from './peerList'
 
-type RoomProps = {
-  room: Room | null
-}
-
-const RoomControl = ({ room }: RoomProps) => {
+const RoomControl = () => {
+  const room = useRecoilValue(roomSelect)
   const roomMgr = useRoomContext()
-  const currUser = roomMgr.getSelf()
 
   return (
     <div className='room'>
-      {room && currUser && (
+      {room && (
         <>
           <h2>{room.name}</h2>
-          <PeerList peers={room.peers} currUserId={currUser.id} />
+          <PeerList peers={room.peers} />
           <CallControl
-            currUser={currUser}
             joinCall={roomMgr.joinCall}
             leaveCall={roomMgr.leaveCall}
-            setMute={mute => roomMgr.setIsMuted(currUser.id, mute)}
           />
         </>
       )}

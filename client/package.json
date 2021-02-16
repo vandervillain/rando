@@ -11,6 +11,7 @@
     "next": "^10.0.0",
     "react": "16.13.1",
     "react-dom": "16.13.1",
+    "recoil": "^0.1.2",
     "socket.io": "^3.0.4",
     "socket.io-client": "^3.0.4"
   },

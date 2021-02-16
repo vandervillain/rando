@@ -1,11 +1,7 @@
 import React, { useState } from 'react'
 import { useAuthContext } from '../contexts/authManager'
 
-type LoginProps = {
-  redirect: string
-}
-
-const LoginControl = ({ redirect }: LoginProps) => {
+const LoginControl = () => {
   const [error, setError] = useState<boolean>(false)
   const usernameRef = React.createRef<HTMLInputElement>()
   const auth = useAuthContext()
@@ -13,7 +9,7 @@ const LoginControl = ({ redirect }: LoginProps) => {
   const submit = () => {
     const value = usernameRef.current?.value
     if (!value) setError(true)
-    else auth.login(value, redirect)
+    else auth.login(value)
   }
 
   const getClass = () => (error ? 'error' : '')

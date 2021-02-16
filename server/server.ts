@@ -19,36 +19,52 @@ const Server = (callback: (port: number) => void) => {
     id: string
     socketId: string
     name: string
-    room: string | null
+    room: ActiveRoom | null
     inCall: boolean
+    order?: number
+  }
+
+  interface ActiveRoom {
+    id: string
+    name: string
   }
 
   let activeUsers: ActiveUser[] = []
+  //let activeRooms: ActiveRoom[] = []
+
+  const getRoomPeerCount = async (roomId: string) => (await io.in(roomId).allSockets()).size
 
   const handleSocketConnection = (): void => {
     io.on('connection', (socket: Socket) => {
       console.log(`connection ${socket.id}`)
 
-      const currUser = () => activeUsers.find((u) => u.socketId == socket.id)
+      const currUser = () => activeUsers.find(u => u.socketId == socket.id)
       const setRoom = async (roomName: string | null) => {
         const activeUser = currUser()
         if (activeUser) {
-          if (activeUser.room) socket.leave(activeUser.room)
+          if (activeUser.room) socket.leave(activeUser.room.id)
           activeUser.room = null
+          activeUser.order = undefined
           if (roomName) {
             const roomId = toRoomId(roomName)
             await socket.join(roomId)
-            activeUser.room = roomId
-            return roomId
-          } else return null
+            activeUser.room = {
+              id: roomId,
+              name: roomName,
+            }
+            activeUser.order = await getRoomPeerCount(roomId)
+            return activeUser.room
+          }
         } else console.error('user not found')
+        return null
       }
       const leaveRoom = () => {
         const activeUser = currUser()
         if (activeUser && activeUser.room) {
-          console.log(`${activeUser.name} leaving room ${activeUser.room}`)
+          const roomId = activeUser.room.id
+          console.log(`${activeUser.name} leaving room ${roomId}`)
           // let others in room know that peer left room
-          socket.in(activeUser.room).broadcast.emit('peer-left-room', activeUser)
+          socket.in(roomId).broadcast.emit('peer-left-room', activeUser)
           setRoom(null)
           activeUser.inCall = false
         }
@@ -56,8 +72,12 @@ const Server = (callback: (port: number) => void) => {
 
       socket.on('join-room', async (userId: string, userName: string, roomName: string) => {
         console.log('join-room')
+
+        // if user is in a room, let peers know they are leaving
+        leaveRoom()
+
         // joining a room makes a user active, add to activeUsers if not already there
-        let activeUser = activeUsers.find((u) => u.id === userId)
+        let activeUser = activeUsers.find(u => u.id === userId)
         if (!activeUser) {
           activeUser = {
             id: userId,
@@ -69,18 +89,15 @@ const Server = (callback: (port: number) => void) => {
           activeUsers.push(activeUser)
         }
 
-        // if user is in a room, let peers know they are leaving
-        leaveRoom()
-
         await setRoom(roomName)
         if (activeUser.room) {
-          console.log(`${activeUser.name} joined room ${activeUser.room}`)
+          console.log(`${activeUser.name} joined room ${activeUser.room.id}`)
 
           // let others in this room know that this peer has joined
-          socket.to(activeUser.room).broadcast.emit('peer-joined-room', activeUser)
+          socket.to(activeUser.room.id).broadcast.emit('peer-joined-room', activeUser)
 
           // let this peer know which peers are already in this room/in call
-          const peers = activeUsers.filter((u) => u.room == activeUser!.room && u.id !== activeUser?.id) //await getPeers(roomName)
+          const peers = activeUsers.filter(u => u.room && u.room.id == activeUser!.room!.id && u.id !== activeUser?.id) //await getPeers(roomName)
           socket.emit('joined-room', activeUser, peers)
         } else console.error('user failed to join room')
       })
@@ -95,10 +112,10 @@ const Server = (callback: (port: number) => void) => {
         const activeUser = currUser()
 
         if (activeUser && activeUser.room) {
-          console.log(`user ${activeUser.name} joining call in ${activeUser.room}`)
+          console.log(`user ${activeUser.name} joining call in ${activeUser.room.id}`)
           activeUser.inCall = true
           // let others in room know that a peer is joining the call
-          socket.in(activeUser.room).broadcast.emit('peer-joining-call', activeUser)
+          socket.in(activeUser.room.id).broadcast.emit('peer-joining-call', activeUser)
         } else console.error('user not found or room is null')
       })
 
@@ -106,9 +123,9 @@ const Server = (callback: (port: number) => void) => {
         console.log('leave-call')
         const activeUser = currUser()
         if (activeUser && activeUser.room && activeUser.inCall) {
-          console.log(`user ${activeUser.name} is leaving call in ${activeUser.room}`)
+          console.log(`user ${activeUser.name} is leaving call in ${activeUser.room.id}`)
           // let others in room know that peer left call
-          socket.in(activeUser.room).broadcast.emit('peer-left-call', activeUser)
+          socket.in(activeUser.room.id).broadcast.emit('peer-left-call', activeUser)
           activeUser.inCall = false
         } else console.error('user not found or room null or not in call')
       })
@@ -121,7 +138,7 @@ const Server = (callback: (port: number) => void) => {
         const activeUser = currUser()
         if (!activeUser || !activeUser.room || !activeUser.inCall) console.error('user not found or room null or not in call')
         else {
-          const targetUser = activeUsers.find((u) => u.id == userId && u.room == activeUser.room && u.inCall)
+          const targetUser = activeUsers.find(u => u.id == userId && u.room && u.room.id === activeUser.room!.id && u.inCall)
           if (!targetUser) console.error('target user not found')
           else {
             console.log(`user ${activeUser.name} is sending an offer to ${targetUser.name}`)
@@ -136,7 +153,7 @@ const Server = (callback: (port: number) => void) => {
         const activeUser = currUser()
         if (!activeUser || !activeUser.room || !activeUser.inCall) console.error('user not found or room null or not in call')
         else {
-          const targetUser = activeUsers.find((u) => u.id == userId && u.room == activeUser.room && u.inCall)
+          const targetUser = activeUsers.find(u => u.id == userId && u.room && u.room.id === activeUser.room!.id && u.inCall)
           if (!targetUser) console.error('target user not found')
           else {
             console.log(`user ${activeUser.name} is sending an answer to ${targetUser.name}`)
@@ -150,7 +167,7 @@ const Server = (callback: (port: number) => void) => {
         const activeUser = currUser()
         if (!activeUser || !activeUser.room || !activeUser.inCall) console.error('user not found or room null or not in call')
         else {
-          const targetUser = activeUsers.find((u) => u.id == id && u.room == activeUser.room && u.inCall)
+          const targetUser = activeUsers.find(u => u.id == id && u.room && u.room.id === activeUser.room!.id && u.inCall)
           if (!targetUser) console.error('target user not found')
           else {
             console.log(`user ${activeUser.name} is sending a candidate to ${targetUser.name}`)
@@ -162,7 +179,7 @@ const Server = (callback: (port: number) => void) => {
       socket.on('disconnecting', () => {
         console.log('disconnecting')
         const activeUser = currUser()
-        socket.rooms.forEach((roomId) => {
+        socket.rooms.forEach(roomId => {
           socket.in(roomId).emit('peer-left-room', activeUser)
         })
       })
@@ -170,7 +187,7 @@ const Server = (callback: (port: number) => void) => {
       socket.on('disconnect', () => {
         console.log('disconnect ' + socket.id)
         const activeUser = currUser()
-        if (activeUser) activeUsers = activeUsers.filter((u) => u.id !== activeUser.id)
+        if (activeUser) activeUsers = activeUsers.filter(u => u.id !== activeUser.id)
       })
     })
   }

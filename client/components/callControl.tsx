@@ -1,21 +1,28 @@
-import { RoomPeer } from '../contexts/roomManager'
+import { useRecoilValue } from "recoil"
+import { useStreamContext } from "../contexts/streamManager"
+import { roomPeerSelect, streamSelect, userSelect } from "../data/atoms"
 
 type CallControlProps = {
-  currUser: RoomPeer
   joinCall: () => void
   leaveCall: () => void
-  setMute: (mute: boolean) => void
 }
 
-const CallControl = ({ currUser, joinCall, leaveCall, setMute }: CallControlProps) => {
+const CallControl = ({ joinCall, leaveCall }: CallControlProps) => {
+  const user = useRecoilValue(userSelect)
+  if (!user) return null
+
+  const peer = useRecoilValue(roomPeerSelect(user.id))
+  const stream = useRecoilValue(streamSelect(user.id))
+  const {muteUnmute} = useStreamContext()
+
   return (
     <div className='callControl'>
-      {!currUser.inCall && <button onClick={joinCall}>Join</button>}
-      {currUser.inCall && (
+      {!peer?.inCall && <button onClick={joinCall}>Join</button>}
+      {peer?.inCall && (
         <>
           <button onClick={leaveCall}>Leave</button>
-          {currUser.isMuted && <button onClick={() => setMute(false)}>Unmute</button>}
-          {!currUser.isMuted && <button onClick={() => setMute(true)}>Mute</button>}
+          {stream?.muted && <button onClick={() => muteUnmute(user.id, false)}>Unmute</button>}
+          {!stream?.muted && <button onClick={() => muteUnmute(user.id, true)}>Mute</button>}
         </>
       )}
     </div>

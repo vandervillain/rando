@@ -1,6 +1,7 @@
-import React, { FunctionComponent, useEffect } from 'react'
-import { useAuthContext } from './authManager'
-import { useStream } from './streamManager'
+import React, { FunctionComponent, useEffect, useState } from 'react'
+import { useRecoilValue } from 'recoil'
+import { userSelect } from '../data/atoms'
+import { useStreamContext } from './streamManager'
 
 type RTCConnectionManagerContext = {
   addConnection: (id: string, onIceCanidate: (id: string, c: RTCIceCandidate) => void) => PeerConnection | null
@@ -28,75 +29,81 @@ interface PeerConnection {
   audioRef: React.RefObject<HTMLAudioElement> | null
   canvasRef?: React.RefObject<HTMLCanvasElement>
   muted: boolean
+  tracksToAdd: MediaStream[]
 }
 
-let rtcPeerConnections: PeerConnection[] = []
-
+const rtcPeerConnections: PeerConnection[] = []
 export const RTCConnectionManager: FunctionComponent<RTCConnectionManagerProps> = ({ children }) => {
-  const auth = useAuthContext()
-  const streamMgr = useStream()
+  const user = useRecoilValue(userSelect)
+  const { getStream, addRemoteStream } = useStreamContext()
+  const [, update] = useState<{}>({})
 
-  const getRtcPeerConnection = (id: string) => rtcPeerConnections.find((p) => p.peerId === id)
+  const getRtcPeerConnection = (id: string) => rtcPeerConnections.find(p => p.peerId === id)
 
   const addRtcPeerConnection = (id: string, onIceCandidate: (id: string, c: RTCIceCandidate) => void) => {
     destroyRtcPeerConnection(id)
 
-    const pc = new RTCPeerConnection()
-    ;(pc as any).peerId = id
-    ;(pc as any).notifyWs = onIceCandidate
+    if (!user) return null
 
-    // Now add your local media stream tracks to the connection
-    const userId = auth.getUser()!.id
-    const outgoingStream = streamMgr.getStream(userId)!.stream!
-    outgoingStream.getAudioTracks().forEach((track: MediaStreamTrack) => {
-      pc.addTrack(track, outgoingStream)
-    })
+    const pc: PeerConnection = {
+      peerId: id,
+      conn: new RTCPeerConnection(),
+      audioRef: null,
+      muted: false,
+      tracksToAdd: [],
+    }
 
-    pc.ontrack = ({ streams: [stream] }) => {
-      const peerStream = streamMgr.addStream((pc as any).peerId)!
-      peerStream.connect()
-      //if (incomingAudioRef.current) incomingAudioRef.current.srcObject = stream
+    ;(pc.conn as any).notifyWs = onIceCandidate
+
+    pc.conn.ontrack = ({ streams: [stream] }) => {
+      console.log('pc.ontrack')
+      pc.tracksToAdd.push(stream)
+      update({})
     }
 
     // Listen for local ICE candidates on the local RTCPeerConnection
-    pc.onicecandidate = ({ candidate }) => {
+    pc.conn.onicecandidate = ({ candidate }) => {
       if (candidate) onIceCandidate(id, candidate)
     }
 
-    pc.onnegotiationneeded = (e) => {
+    pc.conn.onnegotiationneeded = e => {
       //console.log('onnegotiationneeded')
     }
-    pc.ondatachannel = (e) => {
+    pc.conn.ondatachannel = e => {
       //console.log('ondatachannel')
     }
-    pc.oniceconnectionstatechange = (e) => {
-      if (pc.connectionState === 'connected') {
+    pc.conn.oniceconnectionstatechange = e => {
+      if (pc.conn.connectionState === 'connected') {
+        console.log(`pc.connectionState === 'connected'`)
         // Peers connected!
       }
     }
-    pc.onicegatheringstatechange = (e) => {
+    pc.conn.onicegatheringstatechange = e => {
       //console.log('onicegatheringstatechange')
     }
-    pc.onsignalingstatechange = (e) => {
+    pc.conn.onsignalingstatechange = e => {
       //console.log('onsignalingstatechange')
     }
 
-    const newConn: PeerConnection = {
-      peerId: id,
-      conn: pc,
-      audioRef: null,
-      muted: false,
+    // add local stream to connection
+    const outgoingStream = getStream(user.id)
+    if (outgoingStream?.postStream) {
+      const tracks = outgoingStream.postStream.getAudioTracks()
+      console.log('adding local track to outgoing stream')
+      pc.conn.addTrack(tracks[0], outgoingStream.postStream)
     }
-    rtcPeerConnections.push(newConn)
 
-    return newConn
+    rtcPeerConnections.push(pc)
+
+    return pc
   }
 
   const destroyRtcPeerConnection = (id: string) => {
     const peer = getRtcPeerConnection(id)
     if (peer) {
       peer.conn.close()
-      rtcPeerConnections = rtcPeerConnections.filter((p) => p.peerId !== id)
+      const i = rtcPeerConnections.findIndex(p => p.peerId === id)
+      if (i !== -1) rtcPeerConnections.splice(i, 1)
     }
   }
 
@@ -112,10 +119,16 @@ export const RTCConnectionManager: FunctionComponent<RTCConnectionManagerProps> 
   }
 
   useEffect(() => {
-    return () => {
-      console.log('rtcConnectionManager unmounted')
-    }
-  }, [])
+    if (!user) return
+
+    rtcPeerConnections
+      .filter(pc => pc.tracksToAdd.length > 0)
+      .forEach(pc => {
+        while (pc.tracksToAdd.length > 0) {
+          addRemoteStream(pc.peerId, pc.tracksToAdd.shift()!)
+        }
+      })
+  })
 
   return (
     <RTCConnectionContext.Provider

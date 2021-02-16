@@ -1,16 +1,21 @@
-import React, { CSSProperties, useEffect } from 'react'
-import { RoomPeer, useRoomContext } from '../contexts/roomManager'
-import { useStream } from '../contexts/streamManager'
+import React, { CSSProperties, useEffect, useState } from 'react'
+import { useRecoilState, useRecoilValue } from 'recoil'
+import { micTestState, roomPeerSelect, streamSelect, userSelect } from '../data/atoms'
+import { useStreamContext } from '../contexts/streamManager'
 import DecibelControl from './decibelControl'
 
 type PeerControlProps = {
-  peer: RoomPeer
-  isCurrUser: boolean
+  peerId: string
 }
 
-const PeerControl = ({ peer, isCurrUser }: PeerControlProps) => {
-  const streamMgr = useStream()
-  const roomMgr = useRoomContext()
+const PeerControl = ({ peerId }: PeerControlProps) => {
+  const user = useRecoilValue(userSelect)
+  const isCurrUser = peerId === user?.id
+  const stream = useRecoilValue(streamSelect(peerId))
+  const peer = useRecoilValue(roomPeerSelect(peerId))!
+  const { connectIsStreamingVolume, disconnectIsStreamingVolume, setStreamThreshold, setStreamGain, muteUnmute } = useStreamContext()
+  const [testingMic, setTestingMic] = useRecoilState(micTestState)
+  const [outputting, setOutputting] = useState<boolean>(false)
 
   const peerStyle = () => {
     const properties = {} as CSSProperties
@@ -21,40 +26,78 @@ const PeerControl = ({ peer, isCurrUser }: PeerControlProps) => {
 
   const avatarStyle = () => {
     const style: CSSProperties = {}
-    if (peer.isOutputting) style.boxShadow = '0 0 5px 5px #4caf50'
+    if (outputting) style.boxShadow = '0 0 5px 5px #4caf50'
     return style
   }
 
-  const renderMute = (id: string) =>
-    peer.isMuted ? (
-      <button onClick={() => roomMgr.setIsMuted(peer.id, false)}>unmute</button>
-    ) : (
-      <button onClick={() => roomMgr.setIsMuted(peer.id, true)}>mute</button>
-    )
+  const renderMute = (id: string) => {
+    if (isCurrUser) return null
+    else if (stream?.muted)
+      return (
+        <button style={{ display: 'block' }} onClick={() => muteUnmute(peer.id, false)}>
+          unmute
+        </button>
+      )
+    else
+      return (
+        <button style={{ display: 'block' }} onClick={() => muteUnmute(peer.id, true)}>
+          mute
+        </button>
+      )
+  }
+
+  const renderTest = (id: string) => {
+    if (isCurrUser) {
+      if (testingMic)
+        return (
+          <button style={{ display: 'block' }} onClick={() => setTestingMic(false)}>
+            stop test
+          </button>
+        )
+      else
+        return (
+          <button style={{ display: 'block' }} onClick={() => setTestingMic(true)}>
+            test
+          </button>
+        )
+    } else return null
+  }
 
   useEffect(() => {
-    if (peer.inCall) streamMgr.connectIsStreamingVolume(peer.id, o => roomMgr.userOutputUpdate(peer.id, o))
-
-    return () => {
-      if (!peer.inCall) streamMgr.disconnectIsStreamingVolume(peer.id)
+    if (peer.inCall && stream) {
+      connectIsStreamingVolume(peer.id, setOutputting)
     }
-  }, [peer.inCall])
+    return () => {
+      disconnectIsStreamingVolume(peer.id)
+      setOutputting(false)
+    }
+  }, [peer.inCall, stream])
 
   return (
     <div className='peer-control' key={peer.id} style={peerStyle()}>
       <img className='avatar' src='/images/avatar.png' alt={peer.id} width='100px' height='100px' style={avatarStyle()} />
-      <div className='username'>{roomMgr.getPeerById(peer.id)?.name}</div>
-      {peer.inCall && <DecibelControl peerId={peer.id} inCall={peer.inCall} />}
-      <div className='controls'>{renderMute(peer.id)}</div>
-      {!isCurrUser && (
-        <audio autoPlay hidden></audio>
-      )}
+      <div className='username'>
+        {peer.name} ({peer.id})
+      </div>
+      <DecibelControl
+        peerId={peer.id}
+        inCall={peer.inCall}
+        threshold={stream?.threshold ?? 0}
+        setThreshold={p => setStreamThreshold(peer.id, p)}
+        gain={stream?.gain ?? 0}
+        setGain={p => setStreamGain(peer.id, p)}
+      />
+      <div className='controls'>
+        {peer.inCall && renderMute(peer.id)}
+        {isCurrUser && peer.inCall && renderTest(peer.id)}
+      </div>
       <style jsx>{`
         .peer-control {
+          min-width: 500px;
           display: grid;
           grid-template-areas:
-            'avatar username username username'
-            'avatar decibels decibels controls';
+            'avatar username username'
+            'avatar decibels controls';
           grid-gap: 10px;
           background-color: #444;
           padding: 10px;
@@ -73,6 +116,7 @@ const PeerControl = ({ peer, isCurrUser }: PeerControlProps) => {
         }
         .username {
           grid-area: username;
+          min-width: 365px;
         }
         .decibels {
           grid-area: threshold;

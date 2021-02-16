@@ -1,9 +1,9 @@
 import Head from 'next/head'
 import React, { FunctionComponent } from 'react'
 import { AuthManager } from '../contexts/authManager'
-import { DataManager } from '../contexts/dataManager'
 import { RTCConnectionManager } from '../contexts/rtcConnectionManager'
 import { StreamManager } from '../contexts/streamManager'
+import { RecoilRoot } from 'recoil'
 
 const Layout: FunctionComponent = ({ children }) => {
   return (
@@ -13,13 +13,13 @@ const Layout: FunctionComponent = ({ children }) => {
         <link rel='icon' href='/favicon.ico' />
       </Head>
       <main>
-        <DataManager>
+        <RecoilRoot>
           <AuthManager>
             <StreamManager>
               <RTCConnectionManager>{children}</RTCConnectionManager>
             </StreamManager>
           </AuthManager>
-        </DataManager>
+        </RecoilRoot>
       </main>
       <footer>
         <a
