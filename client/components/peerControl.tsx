@@ -31,8 +31,8 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
   }
 
   const renderMute = (id: string) => {
-    if (isCurrUser) return null
-    else if (stream?.muted)
+    if (isCurrUser || !stream) return null
+    else if (stream.muted)
       return (
         <button style={{ display: 'block' }} onClick={() => muteUnmute(peer.id, false)}>
           unmute

@@ -25,13 +25,13 @@ type RoomManagerProps = {
 }
 
 let socket: Socket = io('http://localhost:5000')
-export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId, children }) => {
+export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => {
   const user = useRecoilValue(userSelect)
   const [room, setRoom] = useRecoilState(roomState)
   const roomPeer = useRecoilValue(roomPeerSelect(user?.id))
   const roomS = useRef<Room | null>(room)
   const roomPeerS = useRef<RoomPeer | null>(roomPeer)
-  const { streamMic, stopMic, removeStream, muteUnmute } = useStreamContext()
+  const { streamMic, stopMic, removeStream } = useStreamContext()
   const rtc = useRtcConnections()
 
   const onJoinedRoom = (user: RoomPeer, peers: RoomPeer[]) => {

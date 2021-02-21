@@ -1,5 +1,5 @@
 import React, { FunctionComponent } from 'react'
-import { useRecoilState, useSetRecoilState } from 'recoil'
+import { useRecoilState } from 'recoil'
 import { AnalyserFormat, LocalPeerStream, PeerStream, PeerStreamModel } from '../data/stream'
 import { micTestState, streamState, userState } from '../data/atoms'
 import { UserSettings } from '../data/types'
@@ -7,7 +7,6 @@ import { UserSettings } from '../data/types'
 type StreamManagerContext = {
   getStream: (id: string) => PeerStream | undefined
   addRemoteStream: (id: string, mediaStream: MediaStream) => void
-  connectStream: (id: string, audioRef: React.RefObject<HTMLAudioElement>) => void
   removeStream: (id: string) => void
   muteUnmute: (id: string, mute: boolean) => void
   connectVisualizer: (id: string, callback: (p: number) => void) => void
@@ -23,7 +22,6 @@ type StreamManagerContext = {
 const StreamContext = React.createContext<StreamManagerContext>({
   getStream: (id: string) => undefined,
   addRemoteStream: (id: string, mediaStream: MediaStream) => {},
-  connectStream: (id: string, audioRef: React.RefObject<HTMLAudioElement>) => {},
   removeStream: (id: string) => {},
   muteUnmute: (id: string, mute: boolean) => {},
   connectVisualizer: (id: string, callback: (p: number) => void) => {},
@@ -70,10 +68,6 @@ export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children 
   const addRemoteStream = (id: string, mediaStream: MediaStream) => addStream(new PeerStream(id), mediaStream)
   const addLocalStream = (id: string, mediaStream: MediaStream, opts: UserSettings) => addStream(new LocalPeerStream(id), mediaStream, opts)
 
-  const connectStream = (id: string, audioRef: React.RefObject<HTMLAudioElement>) => {
-    getStream(id)?.connect(audioRef)
-    updateStreamState()
-  }
   const removeStream = (id: string) => {
     const i = peerStreams.findIndex(s => s.id === id)
     if (i !== -1) {
@@ -138,13 +132,10 @@ export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children 
   }
 
   const muteUnmute = (id: string, mute: boolean) => {
-    const index = peerStreams.findIndex(s => s.id === id)
-    const audio = index !== -1 ? audioRefs[index].current : null
-    if (audio) {
-      if (mute) audio.muted = true
-      else audio.muted = false
-      updateStreamState()
-    }
+    const stream = getStream(id)
+    stream?.toggleStream(!mute)
+
+    updateStreamState()
   }
   const shouldAudioBeMuted = (index: number) => {
     const peerStream = getStreamByIndex(index)
@@ -158,11 +149,7 @@ export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children 
 
   const updateStreamState = () => {
     setStreams(
-      peerStreams.map((s, i) => {
-        const model = new PeerStreamModel(s)
-        model.muted = audioRefs[i].current?.muted ?? false
-        return model
-      })
+      peerStreams.map((s, i) => new PeerStreamModel(s))
     )
   }
 
@@ -171,7 +158,6 @@ export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children 
       value={{
         getStream,
         addRemoteStream,
-        connectStream,
         removeStream,
         muteUnmute,
         connectVisualizer,

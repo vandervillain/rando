@@ -18,7 +18,7 @@ export class PeerStreamModel {
     this.isOutputting = peerStream.isOutputting
     this.threshold = peerStream.getThreshold()
     this.gain = peerStream.getGain()
-    this.muted = !peerStream.postStream?.getAudioTracks()[0].enabled || peerStream.isForceMuted()
+    this.muted = !peerStream.isEnabled()
   }
 }
 
@@ -26,8 +26,6 @@ export class PeerStream {
   public id: string
   public isConnected: boolean
   public isOutputting: boolean
-  /** stream that gets sent to peers */
-  public postStream?: MediaStream
   /** raw stream, pre-nodes */
   protected preStream?: MediaStream
   protected audioCtx: AudioContext
@@ -35,9 +33,7 @@ export class PeerStream {
   protected gainNode: GainNode
   /** post gain changes but pre-muteNode, this is what is visualized */
   protected analyser: BaseAnalyser
-  /** used for muting local stream */
-  protected muteNode: GainNode
-  protected maxGain = 10
+  protected maxGain = 5
 
   constructor(id: string) {
     this.id = id
@@ -49,10 +45,9 @@ export class PeerStream {
       gain: this.gain,
     })
     this.analyser = new BaseAnalyser(this.audioCtx)
-    this.muteNode = new GainNode(this.audioCtx, {
-      gain: 1,
-    })
   }
+
+  isEnabled = () => this.preStream?.getAudioTracks()[0].enabled
 
   setStream = (stream: MediaStream, options: StreamOptions) => {
     this.preStream = stream
@@ -60,41 +55,44 @@ export class PeerStream {
     this.gainNode.gain.value = options.gain * this.maxGain
   }
 
-  isForceMuted = () => this.gainNode.gain.value === 0
-  setForceMuted = (mute: boolean) => {
-    this.gainNode.gain.value = mute ? 0 : 1
-  }
-
   toggleStream = (enable: boolean) => {
-    if (this.postStream) this.postStream.getAudioTracks()[0].enabled = enable
+    if (this.preStream) this.preStream.getAudioTracks()[0].enabled = enable
   }
 
   connect = (audioRef: React.RefObject<HTMLAudioElement>) => {
     if (this.preStream && audioRef.current && !this.isConnected) {
-      const source = this.audioCtx.createMediaStreamSource(this.preStream)
-      const destination = this.audioCtx.createMediaStreamDestination()
+      // chrome has a bug where in order to connect a WebRTC media stream to nodes
+      // it needs to first be attached to an <audio> element that is playing
+      const chromeAudioFix = new Audio()
+      chromeAudioFix.srcObject = this.preStream
+      chromeAudioFix.play()
+      chromeAudioFix.muted = true
 
-      source
-        .connect(this.gainNode) // first take gain changes from user
-        .connect(this.analyser.node) // to show user the decibel level
-        .connect(this.muteNode) // mutes output based on if it makes it through threshold
-        .connect(destination)
+      const ctx = this.audioCtx
+      const audio = audioRef.current!
+      const gainNode = this.gainNode
+      const analyser = this.analyser.node
+      chromeAudioFix.onloadedmetadata = function () {
+        const chromeFix = this as HTMLAudioElement
+        const source = ctx.createMediaStreamSource(chromeFix.srcObject as MediaStream)
+        const destination = ctx.createMediaStreamDestination()
 
-      this.postStream = destination.stream
-      audioRef.current.srcObject = this.postStream
+        source.connect(gainNode).connect(analyser).connect(destination)
+
+        audio.srcObject = destination.stream
+      }
+
       this.isConnected = true
       console.log(`connected stream from ${this.id} to an audio element`)
     }
   }
   disconnect = () => {
     this.preStream?.getAudioTracks()[0].stop()
-    this.postStream?.getAudioTracks()[0].stop()
     this.unsubscribeFromPreAnalyser()
     this.unsubscribeFromPostAnalyser()
     this.gainNode?.disconnect()
     this.analyser?.unsubscribe(this.id)
     this.analyser?.node.disconnect()
-    this.muteNode?.disconnect()
     this.audioCtx?.close()
     this.isOutputting = false
   }
@@ -109,7 +107,9 @@ export class PeerStream {
   getThreshold = (): number | undefined => undefined
   setThreshold = (percent: number) => {}
 
-  subscribeToPreAnalyser = (format: AnalyserFormat, callback: (p: number) => void) => this.analyser?.subscribe(this.id, format, callback)
+  subscribeToPreAnalyser = (format: AnalyserFormat, callback: (p: number) => void) => {
+    this.analyser?.subscribe(this.id, format, callback)
+  }
   unsubscribeFromPreAnalyser = () => this.analyser?.unsubscribe(this.id)
   subscribeToPostAnalyser = (format: AnalyserFormat, callback: (p: number) => void) =>
     this.analyser?.subscribe(this.id + 'post', format, p => {
@@ -120,6 +120,10 @@ export class PeerStream {
 }
 
 export class LocalPeerStream extends PeerStream {
+  /** stream that gets sent to peers */
+  public postStream?: MediaStream
+  /** used for muting local stream */
+  protected muteNode: GainNode
   /** used to cut out low decibels, this is what is  */
   private thresholdAnalyser: ThresholdAnalyser
   private lastPassthrough = new Date().getTime()
@@ -147,6 +151,9 @@ export class LocalPeerStream extends PeerStream {
 
   constructor(id: string) {
     super(id)
+    this.muteNode = new GainNode(this.audioCtx, {
+      gain: 1,
+    })
     this.thresholdAnalyser = new ThresholdAnalyser(this.audioCtx, 0.25)
   }
 
@@ -157,7 +164,7 @@ export class LocalPeerStream extends PeerStream {
       source
         .connect(this.gainNode) // first take gain changes from user
         .connect(this.analyser.node) // to show user the decibel level
-        .connect(this.thresholdAnalyser!.node) // user variable minDecibels
+        .connect(this.thresholdAnalyser.node) // user variable minDecibels
         .connect(this.muteNode) // mutes output based on if it makes it through threshold
         .connect(destination)
 
@@ -263,13 +270,12 @@ class BaseAnalyser {
   }
 
   subscribe = (name: string, format: AnalyserFormat, callback: (db: number) => void) => {
-    if (!this.callbacks.some(c => c.name === name)) {
-      this.callbacks.push({
-        name,
-        format,
-        func: callback,
-      })
-    }
+    this.callbacks = this.callbacks.filter(c => c.name !== name)
+    this.callbacks.push({
+      name,
+      format,
+      func: callback,
+    })
 
     if (!this.interval) {
       this.interval = setInterval(() => this.update(), 30)
@@ -304,6 +310,6 @@ export class ThresholdAnalyser extends BaseAnalyser {
   getThreshold = () => this.threshold
   setThreshold = (percent: number) => {
     this.threshold = percent
-    this.node.minDecibels = this.percentToThreshold(percent)
+    this.node.minDecibels = this.percentToThreshold(percent) - 1
   }
 }

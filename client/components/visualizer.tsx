@@ -1,22 +1,26 @@
 import { createRef, useEffect, useState } from 'react'
+import { useRecoilValue } from 'recoil'
 import { useStreamContext } from '../contexts/streamManager'
+import { streamSelect } from '../data/atoms'
 
 type VisualizerProps = {
   peerId: string
 }
 
 const Visualizer = ({peerId}: VisualizerProps) => {
+  const stream = useRecoilValue(streamSelect(peerId))
   const [p, setP] = useState<number>(0)
   const streamMgr = useStreamContext()
   const visualizerRef = createRef<HTMLCanvasElement>()
 
   useEffect(() => {
-    streamMgr.connectVisualizer(peerId, (p) => setP(p))
+    if (stream)
+      streamMgr.connectVisualizer(peerId, (p) => setP(p))
 
     return () => {
       streamMgr.disconnectVisualizer(peerId)
     }
-  }, [])
+  }, [stream])
 
   useEffect(() => {
     if (visualizerRef.current) {

@@ -1,6 +1,7 @@
 import React, { FunctionComponent, useEffect, useState } from 'react'
 import { useRecoilValue } from 'recoil'
 import { userSelect } from '../data/atoms'
+import { LocalPeerStream } from '../data/stream'
 import { useStreamContext } from './streamManager'
 
 type RTCConnectionManagerContext = {
@@ -86,7 +87,7 @@ export const RTCConnectionManager: FunctionComponent<RTCConnectionManagerProps> 
     }
 
     // add local stream to connection
-    const outgoingStream = getStream(user.id)
+    const outgoingStream = getStream(user.id) as LocalPeerStream
     if (outgoingStream?.postStream) {
       const tracks = outgoingStream.postStream.getAudioTracks()
       console.log('adding local track to outgoing stream')
