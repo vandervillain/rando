@@ -24,8 +24,10 @@ export class PeerStreamModel {
 
 export class PeerStream {
   public id: string
+  public index?: number
   public isConnected: boolean
   public isOutputting: boolean
+  public destroy = false
   /** raw stream, pre-nodes */
   protected preStream?: MediaStream
   protected audioCtx: AudioContext
@@ -95,6 +97,7 @@ export class PeerStream {
     this.analyser?.node.disconnect()
     this.audioCtx?.close()
     this.isOutputting = false
+    this.destroy = true
   }
   getGain = () => this.gain
   setGain = (percent: number) => {
@@ -112,11 +115,11 @@ export class PeerStream {
   }
   unsubscribeFromPreAnalyser = () => this.analyser?.unsubscribe(this.id)
   subscribeToPostAnalyser = (format: AnalyserFormat, callback: (p: number) => void) =>
-    this.analyser?.subscribe(this.id + 'post', format, p => {
+    this.analyser?.subscribe(this.id + '_post', format, p => {
       this.isOutputting = p > 0
       callback(p)
     })
-  unsubscribeFromPostAnalyser = () => this.analyser?.unsubscribe(this.id + +'post')
+  unsubscribeFromPostAnalyser = () => this.analyser?.unsubscribe(this.id + '_post')
 }
 
 export class LocalPeerStream extends PeerStream {
@@ -188,21 +191,20 @@ export class LocalPeerStream extends PeerStream {
     this.thresholdAnalyser?.unsubscribe(this.id)
     this.thresholdAnalyser?.node.disconnect()
     this.muteNode?.disconnect()
+    this.audioCtx.close()
     this.isOutputting = false
-    // this.audioCtx.close()
-    // this.source?.disconnect()
-    // this.audio!.current!.srcObject = null
+    this.destroy = true
   }
 
   getThreshold = () => this.thresholdAnalyser.getThreshold()
   setThreshold = (percent: number) => this.thresholdAnalyser?.setThreshold(percent)
 
   subscribeToPostAnalyser = (format: AnalyserFormat, callback: (p: number) => void) =>
-    this.thresholdAnalyser?.subscribe(this.id + 'post', format, p => {
+    this.thresholdAnalyser?.subscribe(this.id + '_post', format, p => {
       this.isOutputting = p > 0
       callback(p)
     })
-  unsubscribeFromPostAnalyser = () => this.thresholdAnalyser?.unsubscribe(this.id + 'post')
+  unsubscribeFromPostAnalyser = () => this.thresholdAnalyser?.unsubscribe(this.id + '_post')
 }
 
 export enum AnalyserFormat {

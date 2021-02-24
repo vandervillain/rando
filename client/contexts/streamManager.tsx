@@ -1,4 +1,4 @@
-import React, { FunctionComponent } from 'react'
+import React, { FunctionComponent, RefObject, useEffect, useState } from 'react'
 import { useRecoilState } from 'recoil'
 import { AnalyserFormat, LocalPeerStream, PeerStream, PeerStreamModel } from '../data/stream'
 import { micTestState, streamState, userState } from '../data/atoms'
@@ -16,7 +16,6 @@ type StreamManagerContext = {
   streamMic: (id: string) => void
   setStreamThreshold: (id: string, p: number) => void
   setStreamGain: (id: string, p: number) => void
-  stopMic: (id: string) => void
 }
 
 const StreamContext = React.createContext<StreamManagerContext>({
@@ -31,7 +30,6 @@ const StreamContext = React.createContext<StreamManagerContext>({
   streamMic: (id: string) => {},
   setStreamThreshold: (id: string, p: number) => {},
   setStreamGain: (id: string, p: number) => {},
-  stopMic: (id: string) => {},
 })
 
 export const useStreamContext = () => React.useContext(StreamContext)
@@ -43,8 +41,7 @@ export interface AudioSource {
   source: MediaElementAudioSourceNode
 }
 
-const peerStreams: PeerStream[] = []
-
+let peerStreams: PeerStream[] = []
 export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children }) => {
   const [userData] = useRecoilState(userState)
   const [streams, setStreams] = useRecoilState(streamState)
@@ -58,10 +55,22 @@ export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children 
   ]
 
   const getStream = (id: string) => peerStreams.find(s => s.id === id)
-  const getStreamByIndex = (i: number) => (peerStreams.length > i ? peerStreams[i] : null)
+  const getStreamByIndex = (i: number) => peerStreams.find(p => p.index === i)
   const addStream = <T extends PeerStream>(stream: T, mediaStream: MediaStream, opts?: UserSettings) => {
     stream.setStream(mediaStream, opts ?? { threshold: 0.5, gain: 0.5 })
-    stream.connect(audioRefs[peerStreams.length])
+    
+    // assign an audio ref index
+    for (let i = 0; i < audioRefs.length; i++) {
+      if (!peerStreams.some(p => p.index === i)) {
+        stream.index = i
+        break;
+      }
+    }
+
+    if (stream.index === undefined) throw Error('should be room for another stream, but there isnt')
+    console.log(`peer ${stream.id} set to audioRef ${stream.index}`)
+
+    stream.connect(audioRefs[stream.index])
     peerStreams.push(stream)
     updateStreamState()
   }
@@ -69,12 +78,9 @@ export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children 
   const addLocalStream = (id: string, mediaStream: MediaStream, opts: UserSettings) => addStream(new LocalPeerStream(id), mediaStream, opts)
 
   const removeStream = (id: string) => {
-    const i = peerStreams.findIndex(s => s.id === id)
-    if (i !== -1) {
-      peerStreams[i].disconnect()
-      peerStreams.splice(i, 1)
-      audioRefs.splice(i, 1)
-      audioRefs.push(React.createRef<HTMLAudioElement>())
+    const stream = getStream(id)
+    if (stream) {
+      stream.disconnect()
       updateStreamState()
     }
   }
@@ -125,12 +131,6 @@ export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children 
     updateStreamState()
   }
 
-  const stopMic = (id: string) => {
-    removeStream(id)
-    updateStreamState()
-    //if (audioRef.current) audioRef.current.srcObject = null
-  }
-
   const muteUnmute = (id: string, mute: boolean) => {
     const stream = getStream(id)
     stream?.toggleStream(!mute)
@@ -142,16 +142,31 @@ export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children 
     if (peerStream) {
       const currUser = peerStream.id === userData.user?.id
       if (currUser) return !testingMic
-      else return streams.length > index ? streams[index].muted : true
+      else return !peerStream.isEnabled()
     }
     return true
   }
 
   const updateStreamState = () => {
-    setStreams(
-      peerStreams.map((s, i) => new PeerStreamModel(s))
-    )
+    setStreams(peerStreams.map((s, i) => new PeerStreamModel(s)))
   }
+
+  useEffect(() => {
+    let destroyAny = peerStreams.some(p => p.destroy)
+    if (destroyAny) {
+      peerStreams.forEach(p => {
+        if (p.destroy) {
+          audioRefs[p.index!].current!.srcObject = null
+        }
+      })
+      peerStreams = peerStreams.filter(p => !p.destroy)
+      console.log('peerStreams indexes:')
+      peerStreams.sort(p => p.index!).forEach(p => {
+        console.log(`${p.index}: ${p.id}`)
+      })
+      updateStreamState()
+    }
+  })
 
   return (
     <StreamContext.Provider
@@ -167,7 +182,6 @@ export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children 
         streamMic,
         setStreamThreshold,
         setStreamGain,
-        stopMic,
       }}
     >
       {audioRefs.map((r, i) => (

@@ -1,6 +1,6 @@
 import React from 'react'
 import { useRecoilValue } from 'recoil'
-import { userSelect } from '../data/atoms'
+import { roomPeerSelect, userSelect } from '../data/atoms'
 import Dragbar from './dragbar'
 import Visualizer from './visualizer'
 
@@ -15,16 +15,22 @@ type DecibelControlProps = {
 
 const DecibelControl = ({ peerId, inCall, threshold, gain, setThreshold, setGain }: DecibelControlProps) => {
   const user = useRecoilValue(userSelect)
-
+  const currPeer = useRecoilValue(roomPeerSelect(user?.id))!
+  
   return (
     <div className='decibel-control'>
-      {inCall && (
+      {inCall && currPeer.inCall && (
         <>
           <Visualizer peerId={peerId} />
           {peerId === user?.id && <Dragbar className='threshold' initialValue={threshold} onChange={p => setThreshold(p)} />}
           <Dragbar className='gain' initialValue={gain} onChange={p => setGain(p)} />
         </>
       )}
+      <style jsx>{`
+      .decibel-control {
+        width: 300px;
+      }
+      `}</style>
     </div>
   )
 }

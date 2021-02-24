@@ -5,7 +5,7 @@ import { LocalPeerStream } from '../data/stream'
 import { useStreamContext } from './streamManager'
 
 type RTCConnectionManagerContext = {
-  addConnection: (id: string, onIceCanidate: (id: string, c: RTCIceCandidate) => void) => PeerConnection | null
+  addConnection: (id: string, index: number, onIceCanidate: (id: string, c: RTCIceCandidate) => void) => PeerConnection | null
   removeConnection: (id: string) => void
   getConnection: (id: string) => PeerConnection | undefined
   addIceCandidate: (id: string, c: RTCIceCandidate) => void
@@ -13,7 +13,7 @@ type RTCConnectionManagerContext = {
 }
 
 const RTCConnectionContext = React.createContext<RTCConnectionManagerContext>({
-  addConnection: (id: string, onIceCanidate: (id: string, c: RTCIceCandidate) => void) => null,
+  addConnection: (id: string, index: number, onIceCanidate: (id: string, c: RTCIceCandidate) => void) => null,
   removeConnection: (id: string) => {},
   getConnection: (id: string) => undefined,
   addIceCandidate: (id: string, c: RTCIceCandidate) => {},
@@ -33,15 +33,15 @@ interface PeerConnection {
   tracksToAdd: MediaStream[]
 }
 
-const rtcPeerConnections: PeerConnection[] = []
+let rtcPeerConnections: PeerConnection[] = []
 export const RTCConnectionManager: FunctionComponent<RTCConnectionManagerProps> = ({ children }) => {
   const user = useRecoilValue(userSelect)
-  const { getStream, addRemoteStream } = useStreamContext()
+  const { getStream, addRemoteStream, removeStream } = useStreamContext()
   const [, update] = useState<{}>({})
 
   const getRtcPeerConnection = (id: string) => rtcPeerConnections.find(p => p.peerId === id)
 
-  const addRtcPeerConnection = (id: string, onIceCandidate: (id: string, c: RTCIceCandidate) => void) => {
+  const addRtcPeerConnection = (id: string, index: number, onIceCandidate: (id: string, c: RTCIceCandidate) => void) => {
     destroyRtcPeerConnection(id)
 
     if (!user) return null
@@ -102,9 +102,9 @@ export const RTCConnectionManager: FunctionComponent<RTCConnectionManagerProps> 
   const destroyRtcPeerConnection = (id: string) => {
     const peer = getRtcPeerConnection(id)
     if (peer) {
+      removeStream(id)
       peer.conn.close()
-      const i = rtcPeerConnections.findIndex(p => p.peerId === id)
-      if (i !== -1) rtcPeerConnections.splice(i, 1)
+      rtcPeerConnections = rtcPeerConnections.filter(pc => pc.peerId != id)
     }
   }
 
@@ -114,9 +114,7 @@ export const RTCConnectionManager: FunctionComponent<RTCConnectionManagerProps> 
   }
 
   const destroy = () => {
-    for (let key in rtcPeerConnections) {
-      destroyRtcPeerConnection(key)
-    }
+    for (let conn of rtcPeerConnections) destroyRtcPeerConnection(conn.peerId)
   }
 
   useEffect(() => {

@@ -21,7 +21,6 @@ const Server = (callback: (port: number) => void) => {
     name: string
     room: ActiveRoom | null
     inCall: boolean
-    order?: number
   }
 
   interface ActiveRoom {
@@ -44,7 +43,6 @@ const Server = (callback: (port: number) => void) => {
         if (activeUser) {
           if (activeUser.room) socket.leave(activeUser.room.id)
           activeUser.room = null
-          activeUser.order = undefined
           if (roomName) {
             const roomId = toRoomId(roomName)
             await socket.join(roomId)
@@ -52,7 +50,6 @@ const Server = (callback: (port: number) => void) => {
               id: roomId,
               name: roomName,
             }
-            activeUser.order = await getRoomPeerCount(roomId)
             return activeUser.room
           }
         } else console.error('user not found')

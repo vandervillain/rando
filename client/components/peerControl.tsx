@@ -12,6 +12,7 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
   const user = useRecoilValue(userSelect)
   const isCurrUser = peerId === user?.id
   const stream = useRecoilValue(streamSelect(peerId))
+  const currPeer = useRecoilValue(roomPeerSelect(user?.id))!
   const peer = useRecoilValue(roomPeerSelect(peerId))!
   const { connectIsStreamingVolume, disconnectIsStreamingVolume, setStreamThreshold, setStreamGain, muteUnmute } = useStreamContext()
   const [testingMic, setTestingMic] = useRecoilState(micTestState)
@@ -64,7 +65,7 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
   }
 
   useEffect(() => {
-    if (peer.inCall && stream) {
+    if (peer.inCall && currPeer.inCall && stream) {
       connectIsStreamingVolume(peer.id, setOutputting)
     }
     return () => {

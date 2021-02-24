@@ -31,21 +31,29 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
   const roomPeer = useRecoilValue(roomPeerSelect(user?.id))
   const roomS = useRef<Room | null>(room)
   const roomPeerS = useRef<RoomPeer | null>(roomPeer)
-  const { streamMic, stopMic, removeStream } = useStreamContext()
+  const { streamMic, removeStream } = useStreamContext()
   const rtc = useRtcConnections()
 
   const onJoinedRoom = (user: RoomPeer, peers: RoomPeer[]) => {
     console.log(`you joined these peers in ${user.room!.name}:`)
     console.log(peers)
+    let order = 0
+    user.order = order++
+    peers.forEach(p => {
+      p.order = order++
+    })
     setRoom({ name: user.room!.name, peers: [user, ...peers] })
   }
 
   const onPeerJoinedRoom = (peer: RoomPeer) => {
     console.log(`peer ${peer.name} joined the room`)
     if (roomS.current) {
-      if (!roomS.current.peers.some(p => p.id === peer.id)) {
-        const updatePeers = [...roomS.current.peers, peer]
-        setRoom({ ...roomS.current, peers: updatePeers })
+      const peers = roomS.current.peers
+      if (!peers.some(p => p.id === peer.id)) {
+        const orderedPeers = [...peers].sort(p => p.order)
+        peer.order = orderedPeers[orderedPeers.length - 1].order + 1
+        const peerUpdate = [...orderedPeers, peer]
+        setRoom({ ...roomS.current, peers: peerUpdate })
       }
     }
   }
@@ -70,8 +78,9 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
     }
   }
 
-  const initConnection = (userId: string, iceCandidate: (id: string, candidate: RTCIceCandidate) => void) => {
-    const peerConnection = rtc.addConnection(userId, iceCandidate)?.conn
+  const initConnection = (peer: RoomPeer, iceCandidate: (id: string, candidate: RTCIceCandidate) => void) => {
+    const peerIndex = roomS.current?.peers.find(p => p.id === peer.id)?.order!
+    const peerConnection = rtc.addConnection(peer.id, peerIndex, iceCandidate)?.conn
     return peerConnection
   }
 
@@ -81,7 +90,7 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
 
     // if current user is in call too, then start up connection workflow
     if (roomPeerS.current?.inCall) {
-      const peerConnection = initConnection(peer.id, sendCandidate)
+      const peerConnection = initConnection(peer, sendCandidate)
 
       if (peerConnection) {
         // send the new peer an offer to connect
@@ -98,14 +107,13 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
   const onPeerLeftCall = (peer: RoomPeer) => {
     console.log(`peer ${peer.name} left the call`)
     rtc.removeConnection(peer.id)
-    removeStream(peer.id)
     setInCall(peer.id, false)
   }
 
   const onOffer = async (peer: RoomPeer, offer: RTCSessionDescriptionInit) => {
     if (!socket) return
     console.log(`offer received from ${peer.id}`)
-    const peerConnection = initConnection(peer.id, rtc.addIceCandidate)
+    const peerConnection = initConnection(peer, rtc.addIceCandidate)
     if (peerConnection) {
       await peerConnection.setRemoteDescription(new RTCSessionDescription(offer))
       const answer = await peerConnection.createAnswer()
@@ -134,8 +142,8 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
   const leaveCall = () => {
     if (user && roomS.current && socket) {
       console.log('you are leaving the call')
-      stopMic(user.id)
       rtc.destroy()
+      removeStream(user.id)
       socket.emit('leave-call', roomS.current.name)
       setInCall(user.id, false)
     }
