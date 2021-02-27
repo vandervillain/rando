@@ -16,7 +16,7 @@ describe('when navigating a room', () => {
 
   beforeAll(async () => {
     browser = await chromium.launch({
-      //headless: false,
+      headless: true,
       //slowMo: 300,
       //devtools: true,
       args: [
