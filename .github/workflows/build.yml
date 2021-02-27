@@ -18,8 +18,11 @@ jobs:
         with:
           node-version: '14.16.0'
 
-      - name: Install Dependencies
-        run: yarn --frozen-lockfile
+      - name: Install Server Dependencies
+        run: cd server && yarn --frozen-lockfile
+
+      - name: Install Client Dependencies
+        run: cd client && yarn --frozen-lockfile
 
       - name: Start Server
         run: cd server && yarn start
