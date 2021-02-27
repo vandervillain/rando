@@ -16,13 +16,13 @@ const CallControl = ({ joinCall, leaveCall }: CallControlProps) => {
   const {muteUnmute} = useStreamContext()
 
   return (
-    <div className='callControl'>
-      {!peer?.inCall && <button onClick={joinCall}>Join</button>}
+    <div className='call-control'>
+      {!peer?.inCall && <button className="join-call" onClick={joinCall}>Join</button>}
       {peer?.inCall && (
         <>
-          <button onClick={leaveCall}>Leave</button>
-          {stream?.muted && <button onClick={() => muteUnmute(user.id, false)}>Unmute</button>}
-          {!stream?.muted && <button onClick={() => muteUnmute(user.id, true)}>Mute</button>}
+          <button className="leave-call" onClick={leaveCall}>Leave</button>
+          {stream?.muted && <button className='unmute' onClick={() => muteUnmute(user.id, false)}>Unmute</button>}
+          {!stream?.muted && <button className='mute' onClick={() => muteUnmute(user.id, true)}>Mute</button>}
         </>
       )}
     </div>

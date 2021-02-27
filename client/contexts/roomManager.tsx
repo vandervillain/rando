@@ -177,6 +177,10 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
   }, [socket])
 
   useEffect(() => {
+    if (socket) subscribe()
+  })
+
+  useEffect(() => {
     if (roomId && user && socket) {
       console.log('you are joining room ' + roomId)
       socket.emit('join-room', user.id, user.name, roomId)

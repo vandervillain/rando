@@ -21,13 +21,13 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
   const peerStyle = () => {
     const properties = {} as CSSProperties
     properties.fontWeight = peer.inCall ? 'bold' : 'normal'
-    properties.boxShadow = peer.inCall ? '0 0 3px 3px #999' : ''
+    properties.boxShadow = peer.inCall ? '0 0 3px 3px #999' : 'none'
     return properties
   }
 
   const avatarStyle = () => {
     const style: CSSProperties = {}
-    if (outputting) style.boxShadow = '0 0 5px 5px #4caf50'
+    style.boxShadow = outputting ? '0 0 5px 5px #4caf50' : 'none'
     return style
   }
 
@@ -35,13 +35,13 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
     if (isCurrUser || !stream) return null
     else if (stream.muted)
       return (
-        <button style={{ display: 'block' }} onClick={() => muteUnmute(peer.id, false)}>
+        <button className='unmute' style={{ display: 'block' }} onClick={() => muteUnmute(peer.id, false)}>
           unmute
         </button>
       )
     else
       return (
-        <button style={{ display: 'block' }} onClick={() => muteUnmute(peer.id, true)}>
+        <button className='mute' style={{ display: 'block' }} onClick={() => muteUnmute(peer.id, true)}>
           mute
         </button>
       )
@@ -51,13 +51,13 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
     if (isCurrUser) {
       if (testingMic)
         return (
-          <button style={{ display: 'block' }} onClick={() => setTestingMic(false)}>
+          <button className='stop-test' style={{ display: 'block' }} onClick={() => setTestingMic(false)}>
             stop test
           </button>
         )
       else
         return (
-          <button style={{ display: 'block' }} onClick={() => setTestingMic(true)}>
+          <button className='test' style={{ display: 'block' }} onClick={() => setTestingMic(true)}>
             test
           </button>
         )
@@ -75,7 +75,7 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
   }, [peer.inCall, stream])
 
   return (
-    <div className='peer-control' key={peer.id} style={peerStyle()}>
+    <div className='peer-control' data-name={peer.name} data-incall={peer.inCall} key={peer.id} style={peerStyle()}>
       <img className='avatar' src='/images/avatar.png' alt={peer.id} width='100px' height='100px' style={avatarStyle()} />
       <div className='username'>
         {peer.name} ({peer.id})

@@ -21,6 +21,20 @@
       "sourceMapPathOverrides": {
         "webpack://_N_E/*": "${webRoot}/*"
       }
+    },
+    {
+      "name": "Debug Jest Tests",
+      "type": "node",
+      "request": "launch",
+      "runtimeArgs": [
+        "--inspect-brk",
+        "${workspaceRoot}/client/node_modules/jest/bin/jest.js",
+        "--config=${workspaceRoot}/client/jest.config.js",
+        "--runInBand"
+      ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "port": 9229
     }
   ]
 }
