@@ -24,14 +24,8 @@ jobs:
       - name: Install Client Dependencies
         run: cd client && yarn --frozen-lockfile
 
-      - name: Start Server
-        run: cd server && yarn start
-      
-      - name: Start React Client
-        run: cd client && yarn dev
-
       - name: Test
-        run: cd client && yarn test
+        run: yarn test:cd
 
       - name: Publish Artifacts
         uses: actions/upload-artifact@v2
