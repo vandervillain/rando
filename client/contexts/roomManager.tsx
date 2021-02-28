@@ -36,7 +36,7 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
 
   const onJoinedRoom = (user: RoomPeer, peers: RoomPeer[]) => {
     console.log(`you joined these peers in ${user.room!.name}:`)
-    console.log(peers)
+    console.log(peers.map(p => p.id).toString())
     let order = 0
     user.order = order++
     peers.forEach(p => {

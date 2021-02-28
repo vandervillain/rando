@@ -1,6 +1,7 @@
 import { chromium, Browser, Page, BrowserContext } from 'playwright'
 
 describe('when navigating a room', () => {
+  let log: string = ''
   const users = ['A', 'B', 'C']
   let browser: Browser
   const contexts: Record<string, BrowserContext> = {}
@@ -12,12 +13,19 @@ describe('when navigating a room', () => {
       permissions: ['microphone'],
     })
     pages[user] = await contexts[user].newPage()
+    pages[user].on('console', m => {
+      log += `${user}: ${m.text()}\n`
+    })
   }
   const timeout = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
   beforeAll(async () => {
     browser = await chromium.launch({
-      headless: false,
+      // logger: {
+      //   isEnabled: () => true,
+      //   log: (name, severity, message) => console.log(message)
+      // },
+      //headless: false,
       //slowMo: 300,
       //devtools: true,
       args: [
@@ -31,6 +39,8 @@ describe('when navigating a room', () => {
   })
 
   afterAll(async () => {
+    console.log(log)
+
     for (let p in pages) {
       await pages[p].close()
       delete pages[p]
