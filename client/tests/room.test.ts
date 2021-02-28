@@ -13,6 +13,7 @@ describe('when navigating a room', () => {
     })
     pages[user] = await contexts[user].newPage()
   }
+  const timeout = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
   beforeAll(async () => {
     browser = await chromium.launch({
@@ -99,6 +100,7 @@ describe('when navigating a room', () => {
     expect(joinCall).not.toBeNull()
     await joinCall?.click()
 
+    await timeout(5000)
     await page.screenshot({ path: 'tests/screenshots/join-call.png', fullPage: true })
     await page.waitForSelector('.call-control button.leave-call')
 
