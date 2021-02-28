@@ -111,6 +111,7 @@ export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children 
         autoGainControl: false,
       },
     })
+    console.log('obtained local stream from mic')
     addLocalStream(id, stream, userData.settings)
     updateStreamState()
   }
