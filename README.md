@@ -1,10 +1,8 @@
 # lfp 
-A WebRTC voice client.
+A WebRTC voice client.  
 
-Terminal 1:
-cd server && yarn start
-
-Terminal 2:
-cd client && yarn dev
-
+yarn  
+yarn install-dependencies  
+yarn build  
+yarn start  
 Navigate to localhost:3000 in browser

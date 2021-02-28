@@ -18,18 +18,18 @@ jobs:
         with:
           node-version: '14.16.0'
 
-      - name: Install Server Dependencies
-        run: cd server && yarn --frozen-lockfile
+      - name: Install Dependencies
+        run: yarn --frozen-lockfile && yarn install-dependencies
 
-      - name: Install Client Dependencies
-        run: cd client && yarn --frozen-lockfile
+      - name: Build
+        run: yarn build
 
       - name: Test
-        run: cd client && yarn test:cd
+        run: yarn test
 
       - name: Publish Artifacts
         uses: actions/upload-artifact@v2
         if: ${{ always() }}
         with:
-          name: test-artifacts
-          path: artifacts
+          name: Test Results
+          path: client/tests/screenshots

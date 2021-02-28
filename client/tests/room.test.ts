@@ -16,7 +16,7 @@ describe('when navigating a room', () => {
 
   beforeAll(async () => {
     browser = await chromium.launch({
-      headless: true,
+      headless: false,
       //slowMo: 300,
       //devtools: true,
       args: [
@@ -99,6 +99,7 @@ describe('when navigating a room', () => {
     expect(joinCall).not.toBeNull()
     await joinCall?.click()
 
+    await page.screenshot({ path: 'tests/screenshots/join-call.png', fullPage: true })
     await page.waitForSelector('.call-control button.leave-call')
 
     expect(await page.$('.call-control button.leave-call')).not.toBeNull()
