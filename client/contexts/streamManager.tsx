@@ -103,6 +103,7 @@ export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children 
   }
 
   const streamMic = async (id: string) => {
+    console.log('attempting to get microphone stream')
     const stream = await window.navigator.mediaDevices.getUserMedia({
       video: false,
       audio: {
