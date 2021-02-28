@@ -100,8 +100,12 @@ describe('when navigating a room', () => {
     expect(joinCall).not.toBeNull()
     await joinCall?.click()
 
-    //await page.screenshot({ path: 'tests/screenshots/join-call.png', fullPage: true })
-    await page.waitForSelector('.call-control button.leave-call')
+    try {
+      await page.waitForSelector('.call-control button.leave-call', { timeout: 5000 })
+    } catch (e) {
+      console.error(e)
+      await page.screenshot({ path: 'tests/screenshots/join-call-timeout.png', fullPage: true })
+    }
 
     expect(await page.$('.call-control button.leave-call')).not.toBeNull()
     expect(await page.$('.call-control button.mute')).not.toBeNull()

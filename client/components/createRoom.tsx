@@ -1,15 +1,15 @@
+import { useRouter } from 'next/router'
 import React, { useState } from 'react'
-import { useAuthContext } from '../contexts/authManager'
 
-const LoginControl = () => {
+const CreateRoom = () => {
+  const router = useRouter()
   const [error, setError] = useState<boolean>(false)
-  const usernameRef = React.createRef<HTMLInputElement>()
-  const auth = useAuthContext()
+  const roomnameRef = React.createRef<HTMLInputElement>()
 
   const submit = () => {
-    const value = usernameRef.current?.value
+    const value = roomnameRef.current?.value
     if (!value) setError(true)
-    else auth.login(value)
+    else router.push('/room/' + value)
   }
 
   const keyDown = (e: React.KeyboardEvent) => {
@@ -19,8 +19,8 @@ const LoginControl = () => {
   const getClass = () => (error ? 'error' : '')
 
   return (
-    <div className='login'>
-      <input ref={usernameRef} onSubmit={submit} className={getClass()} type='text' placeholder='enter user name' onKeyDown={keyDown} />
+    <div className='create-room'>
+      <input ref={roomnameRef} onSubmit={submit} className={getClass()} type='text' placeholder='enter room name' onKeyDown={keyDown} />
       <button onClick={submit}>Start</button>
       <style jsx>{`
         input.error {
@@ -31,4 +31,4 @@ const LoginControl = () => {
   )
 }
 
-export default LoginControl
+export default CreateRoom

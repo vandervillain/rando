@@ -131,10 +131,6 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
   const onCandidate = (id: string, candidate: RTCIceCandidate) => rtc.addIceCandidate(id, candidate)
 
   const joinCall = async () => {
-    console.log('made it here')
-    console.log(user)
-    console.log(roomS.current)
-    console.log(`socket?: ${!!socket}`)
     if (user && roomS.current && socket) {
       console.log('you are joining the call')
       await streamMic(user.id)
