@@ -33,3 +33,13 @@ jobs:
         with:
           name: Test Results
           path: client/tests/screenshots
+  # deploy:
+  #   runs-on: ubunto-latest
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - name: Install doctl
+  #       uses: digitalocean/action-doctl@v2
+  #       with:
+  #         token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+  #     - name: Provision Droplet and deploy container
+  #         run: doctl compute droplet create "$GIT_TAG_NAME" --image docker-18-04 --size s-1vcpu-1gb --region nyc1 --user-data-file deploy.sh --wait

@@ -30,7 +30,8 @@ describe('when navigating a room', () => {
       //devtools: true,
       args: [
         '--allow-file-access-from-files', // allows API access for file:// URLs
-        '--use-fake-ui-for-media-stream', // disables the translation popup
+        '--use-fake-device-for-media-stream', // use fake device for Media Stream to replace actual camera and microphone.
+        '--use-fake-ui-for-media-stream', // bypass the media stream infobar by selecting the default device for media streams
         '--disable-translate', // provide fake media streams
         '--mute-audio', // mute audio output
       ],
