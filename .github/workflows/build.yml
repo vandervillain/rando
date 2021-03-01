@@ -54,9 +54,10 @@ jobs:
   #         repository: vandervillain/lfp
   #         tag_with_ref: true
   deploy:
-    runs-on: ubunto-latest
+    name: Deploy to DigitalOcean
+    runs-on: ubuntu-latest
     steps:
-      - name: Deploy to DigitalOcean
+      - name: SSH into DigitalOcean, pull and dock
         uses: appleboy/ssh-action@master
         with:
           host: ${{secrets.SSH_HOST}}
