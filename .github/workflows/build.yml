@@ -70,4 +70,4 @@ jobs:
             rm lfp -rf
             git clone https://github.com/vandervillain/lfp.git
             cd lfp
-            npm run docker:fresh
+            yarn docker:fresh
