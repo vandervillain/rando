@@ -56,6 +56,7 @@ jobs:
   deploy:
     name: Deploy to DigitalOcean
     runs-on: ubuntu-latest
+    needs: [test]
     steps:
       - name: SSH into DigitalOcean, pull and dock
         uses: appleboy/ssh-action@master
@@ -69,5 +70,4 @@ jobs:
             rm lfp -rf
             git clone https://github.com/vandervillain/lfp.git
             cd lfp
-            yarn docker:fresh            
-            echo 'Deployment successful to digital ocean'
+            npm run docker:fresh
