@@ -7,7 +7,7 @@ const dev = process.env.NODE_ENV !== 'production'
 const app = next({ dev })
 const handle = app.getRequestHandler()
 
-const options = () => {
+const getHttpOptions = () => {
   let httpsOptions = {}
   try {
     httpsOptions = {
@@ -25,7 +25,7 @@ const options = () => {
 //   cert: fs.readFileSync(path.join(__dirname, '/ssl/cert.pem'))
 // }
 app.prepare().then(() => {
-  createServer(httpsOptions(), (req, res) => {
+  createServer(getHttpOptions(), (req, res) => {
     const parsedUrl = parse(req.url, true)
     const { pathname, query } = parsedUrl
     if (pathname == '/.well-known/acme-challenge/ln3ocgHJTO9ArpgN-T4pnXx3_rnobI4FKQfh9kGWaX4') {
