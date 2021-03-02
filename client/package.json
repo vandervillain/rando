@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "start:prod": "NODE_ENV=production node server.js",
     "test": "jest",
     "test:watch": "jest --watchAll",
     "test:debug": "--inspect-brk ./node_modules/jest/bin/jest.js --runInBand --watchAll"

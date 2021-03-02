@@ -18,4 +18,4 @@ RUN yarn build
 EXPOSE 3000
 
 # Run the app
-CMD [ "yarn", "start" ]
+CMD [ "yarn", "start:prod" ]

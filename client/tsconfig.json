@@ -23,7 +23,8 @@
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx", 
-    "pages/api/challenge.js"  
+    "server.js",
+    "pages/api/challenge.js" 
   ],
   "exclude": [
     "node_modules"
