@@ -1,4 +1,5 @@
 const { createServer } = require('https')
+const path = require ('path')
 const { parse } = require('url')
 const next = require('next')
 const fs = require('fs')
@@ -6,8 +7,8 @@ const dev = process.env.NODE_ENV !== 'production'
 const app = next({ dev })
 const handle = app.getRequestHandler()
 const httpsOptions = {
-  key: fs.readFileSync('privkey.pem'),
-  cert: fs.readFileSync('cert.pem')
+  key: fs.readFileSync(path.join(__dirname, 'privkey.pem')),
+  cert: fs.readFileSync(path.join(__dirname, 'cert.pem'))
 }
 app.prepare().then(() => {
   createServer(httpsOptions, (req, res) => {
