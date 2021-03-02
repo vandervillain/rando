@@ -6,6 +6,7 @@ WORKDIR /client-src
 
 # Install dependencies
 COPY package.json .
+COPY ssl /ssl
 RUN yarn --frozen-lockfile
 
 # Copy source files from host computer to the container

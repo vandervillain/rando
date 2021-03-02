@@ -6,9 +6,11 @@ const fs = require('fs')
 const dev = process.env.NODE_ENV !== 'production'
 const app = next({ dev })
 const handle = app.getRequestHandler()
+console.log('real path: ' + fs.realpathSync('.'))
+console.log('real __dirname path: ' + fs.realpathSync(path.join(__dirname, '.')))
 const httpsOptions = {
-  key: fs.readFileSync(path.join(__dirname, 'privkey.pem')),
-  cert: fs.readFileSync(path.join(__dirname, 'cert.pem'))
+  key: fs.readFileSync(path.join(__dirname, '/ssl/privkey.pem')),
+  cert: fs.readFileSync(path.join(__dirname, '/ssl/cert.pem'))
 }
 app.prepare().then(() => {
   createServer(httpsOptions, (req, res) => {
