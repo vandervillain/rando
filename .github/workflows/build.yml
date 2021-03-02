@@ -61,4 +61,5 @@ jobs:
             git clone https://github.com/vandervillain/lfp.git
             cd lfp
             cp -a /etc/letsencrypt/live/rando.gg/. /root/lfp/client/ssl
+            docker-compose push
             yarn docker:fresh
