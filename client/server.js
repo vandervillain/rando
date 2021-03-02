@@ -6,8 +6,8 @@ const dev = process.env.NODE_ENV !== 'production'
 const app = next({ dev })
 const handle = app.getRequestHandler()
 const httpsOptions = {
-  key: fs.readFileSync('/etc/letsencrypt/live/rando.gg/privkey.pem'),
-  cert: fs.readFileSync('/etc/letsencrypt/live/rando.gg/cert.pem'),
+  key: fs.readFileSync('privkey.pem'),
+  cert: fs.readFileSync('cert.pem')
 }
 app.prepare().then(() => {
   createServer(httpsOptions, (req, res) => {
