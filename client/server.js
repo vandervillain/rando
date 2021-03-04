@@ -7,25 +7,12 @@ const dev = process.env.NODE_ENV !== 'production'
 const app = next({ dev })
 const handle = app.getRequestHandler()
 
-const getHttpOptions = () => {
-  let httpsOptions = {}
-  try {
-    httpsOptions = {
-      key: fs.readFileSync(path.join(__dirname, '/ssl/privkey.pem')),
-      cert: fs.readFileSync(path.join(__dirname, '/ssl/cert.pem'))
-    }
-  }
-  catch (e) {
-    console.error(e)
-  }
-  return httpsOptions
+const httpsOptions = {
+  key: fs.readFileSync(path.join(__dirname, '/ssl/privkey.pem')),
+  cert: fs.readFileSync(path.join(__dirname, '/ssl/cert.pem'))
 }
-// const httpsOptions = {
-//   key: fs.readFileSync(path.join(__dirname, '/ssl/privkey.pem')),
-//   cert: fs.readFileSync(path.join(__dirname, '/ssl/cert.pem'))
-// }
 app.prepare().then(() => {
-  createServer(getHttpOptions(), (req, res) => {
+  createServer(httpsOptions, (req, res) => {
     const parsedUrl = parse(req.url, true)
     const { pathname, query } = parsedUrl
     if (pathname == '/.well-known/acme-challenge/ln3ocgHJTO9ArpgN-T4pnXx3_rnobI4FKQfh9kGWaX4') {
