@@ -4,7 +4,7 @@ on: push
     #types: [published]
 jobs:
   test:
-    name: Build and Test package
+    name: Build and Test
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
@@ -31,7 +31,7 @@ jobs:
           name: Test Results
           path: client/tests/screenshots
   publish:
-    name: Push Docker image to Docker Hub
+    name: Publish Image to Docker Hub
     runs-on: ubuntu-latest
     needs: [test]
     steps:
@@ -57,7 +57,7 @@ jobs:
           script_stop: true
           script: |
             docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_TOKEN }}
-            docker pull vandervillain/lfp -a
-            docker-compose down && docker-compose build --pull && docker-compose up --no-start
+            [ ! -d "lfp" ] && (echo "cloning..." && git clone https://github.com/vandervillain/lfp.git && cd lfp) || (echo "pulling..." && cd lfp && git pull)
+            yarn docker:fresh
             docker cp /etc/letsencrypt/live/rando.gg client:/client-src/ssl
-            docker-compose start
+            yarn docker:start
