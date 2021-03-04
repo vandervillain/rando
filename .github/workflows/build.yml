@@ -58,6 +58,5 @@ jobs:
           script: |
             docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_TOKEN }}
             [ ! -d "lfp" ] && (echo "cloning..." && git clone https://github.com/vandervillain/lfp.git && cd lfp) || (echo "pulling..." && cd lfp && git pull)
+            ls
             yarn docker:fresh
-            docker cp /etc/letsencrypt/live/rando.gg client:/client-src/ssl
-            yarn docker:start

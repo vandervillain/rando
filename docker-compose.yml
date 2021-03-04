@@ -8,6 +8,8 @@ services:
     container_name: client
     ports:
       - '3000:3000'
+    volumes:
+      - /etc/letsencrypt/live/rando.gg:/client-src/certs
   server:
     build: ./server
     image: vandervillain/lfp:server
