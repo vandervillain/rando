@@ -9,12 +9,25 @@ const handle = app.getRequestHandler()
 
 const getServerOptions = () => {
   try {
+    const checks = [
+      path.join(__dirname, 'certs/privkey.pem'),
+      path.join(__dirname, '/certs/privkey.pem'),
+      path.resolve(__dirname, 'certs/privkey.pem'),
+      path.resolve(__dirname, '/certs/privkey.pem'),
+      path.join(process.cwd(), 'certs/privkey.pem'),
+      path.join(process.cwd(), '/certs/privkey.pem'),
+      path.resolve(process.cwd(), 'certs/privkey.pem'),
+      path.resolve(process.cwd(), '/certs/privkey.pem'),
+    ]
+    for (var c of checks) {
+      console.log(`${c}: ${fs.existsSync(c)}`)
+    }
     return dev
       ? {}
       : {
-          key: fs.readFileSync(path.join(__dirname, '/certs/privkey.pem')),
-          cert: fs.readFileSync(path.join(__dirname, '/certs/cert.pem')),
-          ca: fs.readFileSync(path.join(__dirname, '/certs/fullchain.pem')),
+          key: fs.readFileSync(path.resolve(__dirname, 'certs/privkey.pem')),
+          cert: fs.readFileSync(path.resolve(__dirname, 'certs/cert.pem')),
+          ca: fs.readFileSync(path.resolve(__dirname, 'certs/fullchain.pem')),
         }
   } catch (e) {
     console.error(e)
