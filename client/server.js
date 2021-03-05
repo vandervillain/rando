@@ -7,37 +7,25 @@ const fs = require('fs')
 const app = next({ dev })
 const handle = app.getRequestHandler()
 
-var walk = function(dir, done) {
-  var results = [];
-  fs.readdir(dir, function(err, list) {
-    if (err) return done(err);
-    var i = 0;
-    (function next() {
-      var file = list[i++];
-      if (!file) return done(null, results);
-      file = path.resolve(dir, file);
-      fs.stat(file, function(err, stat) {
-        if (stat && stat.isDirectory() && file.indexOf('node_modules') === -1) {
-          walk(file, function(err, res) {
-            results = results.concat(res);
-            next();
-          });
-        } else {
-          results.push(file);
-          next();
-        }
-      });
-    })();
-  });
-};
+const ignoreFolders = ['node_modules', '.next']
+const getAllFiles = function (dirPath, arrayOfFiles) {
+  files = fs.readdirSync(dirPath)
+
+  arrayOfFiles = arrayOfFiles || []
+
+  files.forEach(function (file) {
+    if (fs.statSync(dirPath + '/' + file).isDirectory() && !ignoreFolders.some(f => f === file)) {
+      arrayOfFiles = getAllFiles(dirPath + '/' + file, arrayOfFiles)
+    } else {
+      arrayOfFiles.push(path.join(__dirname, dirPath, '/', file))
+    }
+  })
+
+  return arrayOfFiles
+}
 
 const getServerOptions = () => {
   try {
-    const results = walk(__dirname)
-    for (var c of results) {
-      console.log(c)
-      //console.log(`${c}: ${fs.existsSync(c)}`)
-    }
     return dev
       ? {}
       : {
@@ -51,6 +39,9 @@ const getServerOptions = () => {
   }
 }
 app.prepare().then(() => {
+  const results = getAllFiles(__dirname)
+  for (var r of results) console.log(r)
+
   const serverOptions = getServerOptions()
   createServer(serverOptions, (req, res) => {
     const parsedUrl = parse(req.url, true)
