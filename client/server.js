@@ -39,9 +39,9 @@ const getServerOptions = () => {
   }
 }
 app.prepare().then(() => {
-  const results = getAllFiles(__dirname)
-  for (var r of results) console.log(r)
-  for (var r of results) console.error(r)
+  // const results = getAllFiles(__dirname)
+  // for (var r of results) console.log(r)
+  // for (var r of results) console.error(r)
 
   const serverOptions = getServerOptions()
   createServer(serverOptions, (req, res) => {

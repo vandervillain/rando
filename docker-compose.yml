@@ -9,7 +9,7 @@ services:
     ports:
       - '3000:3000'
     volumes:
-      - ./client/certs:/client-src/certs
+      - /etc/letsencrypt/live/rando.gg:/client-src/certs
   server:
     build: ./server
     image: vandervillain/lfp:server
