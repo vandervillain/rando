@@ -58,7 +58,7 @@ jobs:
           script: |
             docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_TOKEN }}
             [ ! -d "lfp" ] && git clone https://github.com/vandervillain/lfp.git
-            cp -r /etc/letsencrypt/live/rando.gg /root/lfp/certs
             cd lfp
             git pull
+            cp -r /etc/letsencrypt/live/rando.gg /root/lfp/client/certs
             yarn docker:refresh
