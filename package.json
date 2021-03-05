@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "A WebRTC voice client.",
   "scripts": {
-    "docker:rebuild": "docker-compose down && docker-compose build --pull && docker-compose up",
+    "docker:rebuild": "docker-compose down && docker-compose build && docker-compose up",
     "docker:refresh": "docker-compose pull && docker-compose down && docker-compose up",
     "install-dependencies": "run-p install-dependencies:server install-dependencies:client",
     "install-dependencies:server": "cd server && yarn --frozen-lockfile",
