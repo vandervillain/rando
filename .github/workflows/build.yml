@@ -57,7 +57,7 @@ jobs:
           script_stop: true
           script: |
             docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_TOKEN }}
-            rm -rf lfp
-            git clone https://github.com/vandervillain/lfp.git
-            cd lfp
+            rm -rf rando
+            git clone https://github.com/vandervillain/rando.git
+            cd rando
             yarn docker:rebuild

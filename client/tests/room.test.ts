@@ -56,7 +56,7 @@ describe('when navigating a room', () => {
   test.each(users)('user %p home page loads but does not show a room', async user => {
     const page = getPage(user)
     await page.goto('http://localhost:3000')
-    expect(await page.title()).toBe('LFP')
+    expect(await page.title()).toBe('rando')
     expect(await page.$('.room')).toBeNull()
   })
 

@@ -2,7 +2,7 @@ version: '3.8'
 services:
   client:
     build: ./client
-    image: vandervillain/lfp:client
+    image: vandervillain/rando:client
     depends_on:
       - server
     container_name: client
@@ -10,7 +10,7 @@ services:
       - '3000:3000'
   server:
     build: ./server
-    image: vandervillain/lfp:server
+    image: vandervillain/rando:server
     container_name: server
     ports:
       - '5000:5000'

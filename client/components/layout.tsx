@@ -9,7 +9,7 @@ const Layout: FunctionComponent = ({ children }) => {
   return (
     <div className='container'>
       <Head>
-        <title>LFP</title>
+        <title>rando</title>
         <link rel='icon' href='/favicon.ico' />
       </Head>
       <main>

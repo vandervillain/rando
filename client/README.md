@@ -1,1 +1,2 @@
-This is a starter template for LFP
+Rando Client App
+React/Recoil/WebRTC/Web Audio API
