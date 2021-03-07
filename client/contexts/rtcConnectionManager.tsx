@@ -46,9 +46,10 @@ export const RTCConnectionManager: FunctionComponent<RTCConnectionManagerProps> 
 
     if (!user) return null
 
+    const rtcConfig = process.env.NODE_ENV === 'production' ? {'iceServers': [{'urls': process.env.NEXT_PUBLIC_TURN}]} : undefined
     const pc: PeerConnection = {
       peerId: id,
-      conn: new RTCPeerConnection(),
+      conn: new RTCPeerConnection(rtcConfig),
       audioRef: null,
       muted: false,
       tracksToAdd: [],

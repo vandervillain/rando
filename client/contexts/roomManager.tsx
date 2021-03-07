@@ -24,7 +24,7 @@ type RoomManagerProps = {
   roomId: string
 }
 
-let socket: Socket = io('http://localhost:5000')
+let socket: Socket = io(process.env.NEXT_PUBLIC_SOCKET)
 export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => {
   const user = useRecoilValue(userSelect)
   const [room, setRoom] = useRecoilState(roomState)
