@@ -33,6 +33,8 @@ interface PeerConnection {
   tracksToAdd: MediaStream[]
 }
 
+const rtcConfig = process.env.NEXT_PUBLIC_TURN ? { iceServers: [{ urls: process.env.NEXT_PUBLIC_TURN }] } : undefined
+
 let rtcPeerConnections: PeerConnection[] = []
 export const RTCConnectionManager: FunctionComponent<RTCConnectionManagerProps> = ({ children }) => {
   const user = useRecoilValue(userSelect)
@@ -46,7 +48,6 @@ export const RTCConnectionManager: FunctionComponent<RTCConnectionManagerProps> 
 
     if (!user) return null
 
-    const rtcConfig = process.env.NODE_ENV === 'production' ? {'iceServers': [{'urls': process.env.NEXT_PUBLIC_TURN}]} : undefined
     const pc: PeerConnection = {
       peerId: id,
       conn: new RTCPeerConnection(rtcConfig),
