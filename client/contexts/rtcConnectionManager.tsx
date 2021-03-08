@@ -33,7 +33,9 @@ interface PeerConnection {
   tracksToAdd: MediaStream[]
 }
 
-const rtcConfig = process.env.NEXT_PUBLIC_TURN ? { iceServers: [{ urls: process.env.NEXT_PUBLIC_TURN }] } : undefined
+const rtcConfig = process.env.TURN_SERVER_URI
+  ? { iceServers: [{ urls: process.env.TURN_SERVER_URI, username: process.env.TURN_SERVER_USER, credential: process.env.TURN_SERVER_PASS }] }
+  : undefined
 
 let rtcPeerConnections: PeerConnection[] = []
 export const RTCConnectionManager: FunctionComponent<RTCConnectionManagerProps> = ({ children }) => {
