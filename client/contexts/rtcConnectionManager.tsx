@@ -52,7 +52,7 @@ export const RTCConnectionManager: FunctionComponent<RTCConnectionManagerProps> 
 
     const pc: PeerConnection = {
       peerId: id,
-      conn: new RTCPeerConnection(),
+      conn: new RTCPeerConnection(rtcConfig),
       audioRef: null,
       muted: false,
       tracksToAdd: [],
