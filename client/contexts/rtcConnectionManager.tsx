@@ -5,7 +5,7 @@ import { LocalPeerStream } from '../data/stream'
 import { useStreamContext } from './streamManager'
 
 type RTCConnectionManagerContext = {
-  addConnection: (id: string, index: number, onIceCanidate: (id: string, c: RTCIceCandidate) => void) => PeerConnection | null
+  addConnection: (id: string, sendIceCandidate: (id: string, c: RTCIceCandidate) => void) => PeerConnection | null
   removeConnection: (id: string) => void
   getConnection: (id: string) => PeerConnection | undefined
   addIceCandidate: (id: string, c: RTCIceCandidate) => void
@@ -13,7 +13,7 @@ type RTCConnectionManagerContext = {
 }
 
 const RTCConnectionContext = React.createContext<RTCConnectionManagerContext>({
-  addConnection: (id: string, index: number, onIceCanidate: (id: string, c: RTCIceCandidate) => void) => null,
+  addConnection: (id: string, sendIceCandidate: (id: string, c: RTCIceCandidate) => void) => null,
   removeConnection: (id: string) => {},
   getConnection: (id: string) => undefined,
   addIceCandidate: (id: string, c: RTCIceCandidate) => {},
@@ -45,20 +45,18 @@ export const RTCConnectionManager: FunctionComponent<RTCConnectionManagerProps> 
 
   const getRtcPeerConnection = (id: string) => rtcPeerConnections.find(p => p.peerId === id)
 
-  const addRtcPeerConnection = (id: string, index: number, onIceCandidate: (id: string, c: RTCIceCandidate) => void) => {
+  const addRtcPeerConnection = (id: string, sendIceCandidate: (id: string, c: RTCIceCandidate) => void) => {
     destroyRtcPeerConnection(id)
 
     if (!user) return null
 
     const pc: PeerConnection = {
       peerId: id,
-      conn: new RTCPeerConnection(rtcConfig),
+      conn: new RTCPeerConnection(),
       audioRef: null,
       muted: false,
       tracksToAdd: [],
     }
-
-    ;(pc.conn as any).notifyWs = onIceCandidate
 
     pc.conn.ontrack = ({ streams: [stream] }) => {
       console.log('pc.ontrack')
@@ -68,26 +66,29 @@ export const RTCConnectionManager: FunctionComponent<RTCConnectionManagerProps> 
 
     // Listen for local ICE candidates on the local RTCPeerConnection
     pc.conn.onicecandidate = ({ candidate }) => {
-      if (candidate) onIceCandidate(id, candidate)
+      console.log(`onicecandidate`)
+      if (candidate)
+        sendIceCandidate(id, candidate)
     }
 
     pc.conn.onnegotiationneeded = e => {
-      //console.log('onnegotiationneeded')
+      console.log('onnegotiationneeded')
     }
     pc.conn.ondatachannel = e => {
-      //console.log('ondatachannel')
+      console.log('ondatachannel')
     }
     pc.conn.oniceconnectionstatechange = e => {
+      console.log(`oniceconnectionstatechange`)
       if (pc.conn.connectionState === 'connected') {
         console.log(`pc.connectionState === 'connected'`)
         // Peers connected!
       }
     }
     pc.conn.onicegatheringstatechange = e => {
-      //console.log('onicegatheringstatechange')
+      console.log('onicegatheringstatechange')
     }
     pc.conn.onsignalingstatechange = e => {
-      //console.log('onsignalingstatechange')
+      console.log('onsignalingstatechange')
     }
 
     // add local stream to connection
@@ -113,6 +114,7 @@ export const RTCConnectionManager: FunctionComponent<RTCConnectionManagerProps> 
   }
 
   const addIceCandidate = (id: string, candidate: RTCIceCandidate) => {
+    console.log('addIceCandidate')
     const pc = getRtcPeerConnection(id)
     pc?.conn.addIceCandidate(candidate)
   }
