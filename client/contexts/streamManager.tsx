@@ -187,7 +187,7 @@ export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children 
       }}
     >
       {audioRefs.map((r, i) => (
-        <audio key={i} ref={r} autoPlay controls muted={shouldAudioBeMuted(i)}></audio>
+        <audio key={i} ref={r} autoPlay hidden={process.env.NODE_ENV === "production"} controls muted={shouldAudioBeMuted(i)}></audio>
       ))}
       {children}
     </StreamContext.Provider>

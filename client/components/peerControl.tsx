@@ -18,6 +18,13 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
   const [testingMic, setTestingMic] = useRecoilState(micTestState)
   const [outputting, setOutputting] = useState<boolean>(false)
 
+  const peerDisplayName = () => (
+    <>
+      {peer.name} {process.env.NODE_ENV !== 'production' && (
+        <>({peer.id})</>
+      )}
+    </>
+  )
   const peerStyle = () => {
     const properties = {} as CSSProperties
     properties.fontWeight = peer.inCall ? 'bold' : 'normal'
@@ -77,9 +84,7 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
   return (
     <div className='peer-control' data-name={peer.name} data-incall={peer.inCall} key={peer.id} style={peerStyle()}>
       <img className='avatar' src='/images/avatar.png' alt={peer.id} width='100px' height='100px' style={avatarStyle()} />
-      <div className='username'>
-        {peer.name} ({peer.id})
-      </div>
+      <div className='username'>{peerDisplayName()}</div>
       <DecibelControl
         peerId={peer.id}
         inCall={peer.inCall}

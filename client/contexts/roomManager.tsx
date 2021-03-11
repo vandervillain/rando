@@ -79,7 +79,6 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
   }
 
   const initConnection = (peer: RoomPeer) => {
-    const peerIndex = roomS.current?.peers.find(p => p.id === peer.id)?.order!
     const peerConnection = rtc.addConnection(peer.id, sendIceCandidate)?.conn
     return peerConnection
   }
