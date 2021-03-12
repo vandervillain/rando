@@ -10,8 +10,10 @@
     "install-dependencies:client": "cd client && yarn --frozen-lockfile",
     "build": "cd client && yarn build",
     "start": "run-p start:server start:client",
+    "start:dev": "run-p start:server start:client:dev",
     "start:server": "cd server && yarn start",
     "start:client": "cd client && yarn start",
+    "start:client:dev": "cd client && yarn dev",
     "test": "run-p -r start test:e2e",
     "test:e2e": "cd client && yarn test"
   },

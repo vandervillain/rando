@@ -1,3 +1,5 @@
+import Colors from '../helpers/colors'
+
 type DragbarProps = {
   className: string
   /** in percent, ie, 0.25 */
@@ -49,7 +51,7 @@ const Dragbar = ({ className, initialValue, onChange }: DragbarProps) => {
         }
 
         .threshold .slider::-webkit-slider-thumb {
-          background: #4caf50;
+          background: ${Colors.Green};
           width: 5px;
           height: 15px;
           -webkit-clip-path: polygon(0 20%, 50% 0%, 100% 20%, 100% 100%, 0% 100%);
@@ -57,7 +59,7 @@ const Dragbar = ({ className, initialValue, onChange }: DragbarProps) => {
         }
 
         .gain .slider::-webkit-slider-thumb {
-          background-color: #fc7303;
+          background-color: ${Colors.Orange};
           width: 20px;
           height: 15px;
           -webkit-clip-path: polygon(0 0%, 80% 0%, 100% 40%, 100% 60%, 80% 100%, 0% 100%);

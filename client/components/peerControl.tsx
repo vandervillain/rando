@@ -3,6 +3,9 @@ import { useRecoilState, useRecoilValue } from 'recoil'
 import { micTestState, roomPeerSelect, streamSelect, userSelect } from '../data/atoms'
 import { useStreamContext } from '../contexts/streamManager'
 import DecibelControl from './decibelControl'
+import { isDev } from '../helpers/development'
+import { Glyph, GlyphType } from './glyph'
+import Colors from '../helpers/colors'
 
 type PeerControlProps = {
   peerId: string
@@ -20,9 +23,7 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
 
   const peerDisplayName = () => (
     <>
-      {peer.name} {process.env.NODE_ENV !== 'production' && (
-        <>({peer.id})</>
-      )}
+      {peer.name} {process.env.NEXT_PUBLIC_DEBUG_AUDIO && <>({peer.id})</>}
     </>
   )
   const peerStyle = () => {
@@ -42,15 +43,25 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
     if (isCurrUser || !stream) return null
     else if (stream.muted)
       return (
-        <button className='unmute' style={{ display: 'block' }} onClick={() => muteUnmute(peer.id, false)}>
-          unmute
-        </button>
+        <Glyph
+          className='unmute'
+          style={{ display: 'block' }}
+          type={GlyphType.Deafen}
+          size={32}
+          color={Colors.Gray}
+          onClick={() => muteUnmute(peer.id, false)}
+        />
       )
     else
       return (
-        <button className='mute' style={{ display: 'block' }} onClick={() => muteUnmute(peer.id, true)}>
-          mute
-        </button>
+        <Glyph
+          className='mute'
+          style={{ display: 'block' }}
+          type={GlyphType.Volume}
+          size={32}
+          color={Colors.Green}
+          onClick={() => muteUnmute(peer.id, true)}
+        />
       )
   }
 
@@ -58,15 +69,25 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
     if (isCurrUser) {
       if (testingMic)
         return (
-          <button className='stop-test' style={{ display: 'block' }} onClick={() => setTestingMic(false)}>
-            stop test
-          </button>
+          <Glyph
+            className='stop-test'
+            style={{ display: 'block' }}
+            type={GlyphType.Headphones}
+            size={32}
+            color={Colors.Orange}
+            onClick={() => setTestingMic(false)}
+          />
         )
       else
         return (
-          <button className='test' style={{ display: 'block' }} onClick={() => setTestingMic(true)}>
-            test
-          </button>
+          <Glyph
+            className='test'
+            style={{ display: 'block' }}
+            type={GlyphType.Headphones}
+            size={32}
+            color={Colors.Gray}
+            onClick={() => setTestingMic(true)}
+          />
         )
     } else return null
   }

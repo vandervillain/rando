@@ -1,5 +1,7 @@
 import { useRouter } from 'next/router'
 import React, { useState } from 'react'
+import { Glyph, GlyphType } from './glyph'
+import Colors from '../helpers/colors'
 
 const CreateRoom = () => {
   const router = useRouter()
@@ -21,8 +23,18 @@ const CreateRoom = () => {
   return (
     <div className='create-room'>
       <input ref={roomnameRef} onSubmit={submit} className={getClass()} type='text' placeholder='enter room name' onKeyDown={keyDown} />
-      <button onClick={submit}>Start</button>
+      <Glyph type={GlyphType.Submit} size={32} color={Colors.Gray} onClick={submit} />
       <style jsx>{`
+        .create-room > * {
+          float: left;
+        }
+        .create-room input[type=text] {
+          height: 32px;
+          margin-right: 5px;
+          border: none;
+          outline: none;
+          border-radius: 3px;
+        }
         input.error {
           border-box: 0 0 2px 2px red;
         }

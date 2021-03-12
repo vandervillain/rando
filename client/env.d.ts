@@ -7,6 +7,7 @@ declare global {
       NEXT_PUBLIC_TURN: string
       NEXT_PUBLIC_TURN_SERVER_USER: string
       NEXT_PUBLIC_TURN_SERVER_PASS: string
+      NEXT_PUBLIC_DEBUG_AUDIO: boolean
     }
   }
 }

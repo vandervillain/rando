@@ -3,6 +3,5 @@ A WebRTC voice client for those who don't want some rando hanging around on thei
 
 yarn  
 yarn install-dependencies  
-yarn build  
-yarn start  
+yarn start:dev
 Navigate to localhost:3000 in browser
