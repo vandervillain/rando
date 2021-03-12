@@ -1,4 +1,4 @@
-import React, { FunctionComponent, RefObject, useEffect, useState } from 'react'
+import React, { FunctionComponent, useEffect } from 'react'
 import { useRecoilState } from 'recoil'
 import { AnalyserFormat, LocalPeerStream, PeerStream, PeerStreamModel } from '../data/stream'
 import { micTestState, streamState, userState } from '../data/atoms'

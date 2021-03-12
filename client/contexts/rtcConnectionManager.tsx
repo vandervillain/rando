@@ -3,6 +3,7 @@ import { useRecoilValue } from 'recoil'
 import { userSelect } from '../data/atoms'
 import { LocalPeerStream } from '../data/stream'
 import { useStreamContext } from './streamManager'
+import { getTurnConfig } from '../helpers/development'
 
 type RTCConnectionManagerContext = {
   addConnection: (id: string, sendIceCandidate: (id: string, c: RTCIceCandidate) => void) => PeerConnection | null
@@ -33,10 +34,8 @@ interface PeerConnection {
   tracksToAdd: MediaStream[]
 }
 
-const rtcConfig = process.env.TURN_SERVER_URI
-  ? { iceServers: [{ urls: process.env.TURN_SERVER_URI, username: process.env.TURN_SERVER_USER, credential: process.env.TURN_SERVER_PASS }] }
-  : undefined
-
+const rtcConfig = getTurnConfig()
+console.log(rtcConfig)
 let rtcPeerConnections: PeerConnection[] = []
 export const RTCConnectionManager: FunctionComponent<RTCConnectionManagerProps> = ({ children }) => {
   const user = useRecoilValue(userSelect)
@@ -67,8 +66,7 @@ export const RTCConnectionManager: FunctionComponent<RTCConnectionManagerProps> 
     // Listen for local ICE candidates on the local RTCPeerConnection
     pc.conn.onicecandidate = ({ candidate }) => {
       console.log(`onicecandidate`)
-      if (candidate)
-        sendIceCandidate(id, candidate)
+      if (candidate) sendIceCandidate(id, candidate)
     }
 
     pc.conn.onnegotiationneeded = e => {

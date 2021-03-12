@@ -9,7 +9,7 @@ const CreateRoom = () => {
   const submit = () => {
     const value = roomnameRef.current?.value
     if (!value) setError(true)
-    else router.push('/room/' + value)
+    else router.push('/r/' + value)
   }
 
   const keyDown = (e: React.KeyboardEvent) => {
