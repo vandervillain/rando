@@ -35,7 +35,6 @@ interface PeerConnection {
 }
 
 const rtcConfig = getTurnConfig()
-console.log(rtcConfig)
 let rtcPeerConnections: PeerConnection[] = []
 export const RTCConnectionManager: FunctionComponent<RTCConnectionManagerProps> = ({ children }) => {
   const user = useRecoilValue(userSelect)

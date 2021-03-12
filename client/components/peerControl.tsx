@@ -3,7 +3,7 @@ import { useRecoilState, useRecoilValue } from 'recoil'
 import { micTestState, roomPeerSelect, streamSelect, userSelect } from '../data/atoms'
 import { useStreamContext } from '../contexts/streamManager'
 import DecibelControl from './decibelControl'
-import { isDev } from '../helpers/development'
+import { isDebug, isDev } from '../helpers/development'
 import { Glyph, GlyphType } from './glyph'
 import Colors from '../helpers/colors'
 
@@ -23,7 +23,7 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
 
   const peerDisplayName = () => (
     <>
-      {peer.name} {process.env.NEXT_PUBLIC_DEBUG_AUDIO && <>({peer.id})</>}
+      {peer.name} {isDebug && <>({peer.id})</>}
     </>
   )
   const peerStyle = () => {

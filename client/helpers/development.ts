@@ -1,5 +1,5 @@
 export const isDev = process.env.NEXT_PUBLIC_ENV === 'development'
-
+export const isDebug = process.env.NEXT_PUBLIC_DEBUG_AUDIO === 'true'
 export const getTurnConfig = (): RTCConfiguration | undefined => {
   return isDev
     ? undefined
