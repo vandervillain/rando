@@ -1,4 +1,4 @@
-import Colors from '../helpers/colors'
+import Colors from '../../helpers/colors'
 
 type DragbarProps = {
   className: string
@@ -43,27 +43,44 @@ const Dragbar = ({ className, initialValue, onChange }: DragbarProps) => {
         .slider::-webkit-slider-thumb {
           -webkit-appearance: none; /* Override default look */
           appearance: none;
-          cursor: pointer;
-        }
-
-        .slider::-moz-range-thumb {
+          border: none;
+          height: 15px;
+          border-radius: 0;
           cursor: pointer;
         }
 
         .threshold .slider::-webkit-slider-thumb {
           background: ${Colors.Green};
           width: 5px;
-          height: 15px;
-          -webkit-clip-path: polygon(0 20%, 50% 0%, 100% 20%, 100% 100%, 0% 100%);
-          clip-path: polygon(0 20%, 50% 0%, 100% 20%, 100% 100%, 0% 100%);
+          -webkit-clip-path: polygon(0% 20%, 50% 0%, 100% 20%, 100% 100%, 0% 100%);
         }
 
         .gain .slider::-webkit-slider-thumb {
           background-color: ${Colors.Orange};
           width: 20px;
+          -webkit-clip-path: polygon(0% 0%, 80% 0%, 100% 40%, 100% 60%, 80% 100%, 0% 100%);
+        }
+
+        .slider::-moz-range-thumb {
+          -moz-appearance: none; /* Override default look */
+          appearance: none;
+          border: none;
           height: 15px;
-          -webkit-clip-path: polygon(0 0%, 80% 0%, 100% 40%, 100% 60%, 80% 100%, 0% 100%);
-          clip-path: polygon(0 0%, 80% 0%, 100% 40%, 100% 60%, 80% 100%, 0% 100%);
+          border-radius: 0;
+          cursor: pointer;
+        }
+
+        .threshold .slider::-moz-range-thumb {
+          background-color: ${Colors.Green};
+          width: 5px;
+          clip-path: polygon(0% 20%, 50% 0%, 100% 20%, 100% 100%, 0% 100%);
+        }
+
+        .gain .slider::-moz-range-thumb {
+          background-color: ${Colors.Orange};
+          width: 20px;
+          height: 15px;
+          clip-path: polygon(0% 0%, 80% 0%, 100% 40%, 100% 60%, 80% 100%, 0% 100%);
         }
       `}</style>
     </div>

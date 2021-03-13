@@ -1,6 +1,6 @@
 import React from 'react'
 import { useRecoilValue } from 'recoil'
-import { roomPeerSelect, userSelect } from '../data/atoms'
+import { roomPeerSelect, userSelect } from '../../data/atoms'
 import Dragbar from './dragbar'
 import Visualizer from './visualizer'
 

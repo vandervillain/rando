@@ -1,7 +1,7 @@
 import { createRef, useEffect, useState } from 'react'
 import { useRecoilValue } from 'recoil'
-import { useStreamContext } from '../contexts/streamManager'
-import { streamSelect } from '../data/atoms'
+import { useStreamContext } from '../../contexts/streamManager'
+import { streamSelect } from '../../data/atoms'
 
 type VisualizerProps = {
   peerId: string

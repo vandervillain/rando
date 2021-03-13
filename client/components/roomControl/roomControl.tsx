@@ -1,9 +1,9 @@
 import React from 'react'
 import { useRecoilValue } from 'recoil'
-import { useRoomContext } from '../contexts/roomManager'
-import { roomSelect } from '../data/atoms'
+import { useRoomContext } from '../../contexts/roomManager'
+import { roomSelect } from '../../data/atoms'
 import CallControl from './callControl'
-import PeerList from './peerList'
+import PeerList from '../peerList'
 
 const RoomControl = () => {
   const room = useRecoilValue(roomSelect)

@@ -1,11 +1,10 @@
 import React, { CSSProperties, useEffect, useState } from 'react'
-import { useRecoilState, useRecoilValue } from 'recoil'
-import { micTestState, roomPeerSelect, streamSelect, userSelect } from '../data/atoms'
-import { useStreamContext } from '../contexts/streamManager'
+import { useRecoilValue } from 'recoil'
+import { roomPeerSelect, streamSelect, userSelect } from '../../data/atoms'
+import { useStreamContext } from '../../contexts/streamManager'
 import DecibelControl from './decibelControl'
-import { isDebug, isDev } from '../helpers/development'
-import { Glyph, GlyphType } from './glyph'
-import Colors from '../helpers/colors'
+import { isDebug } from '../../helpers/development'
+import MicControl from './micControl'
 
 type PeerControlProps = {
   peerId: string
@@ -17,8 +16,7 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
   const stream = useRecoilValue(streamSelect(peerId))
   const currPeer = useRecoilValue(roomPeerSelect(user?.id))!
   const peer = useRecoilValue(roomPeerSelect(peerId))!
-  const { connectIsStreamingVolume, disconnectIsStreamingVolume, setStreamThreshold, setStreamGain, muteUnmute } = useStreamContext()
-  const [testingMic, setTestingMic] = useRecoilState(micTestState)
+  const { connectIsStreamingVolume, disconnectIsStreamingVolume, setStreamThreshold, setStreamGain } = useStreamContext()
   const [outputting, setOutputting] = useState<boolean>(false)
 
   const peerDisplayName = () => (
@@ -39,59 +37,6 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
     return style
   }
 
-  const renderMute = (id: string) => {
-    if (isCurrUser || !stream) return null
-    else if (stream.muted)
-      return (
-        <Glyph
-          className='unmute'
-          style={{ display: 'block' }}
-          type={GlyphType.Deafen}
-          size={32}
-          color={Colors.Gray}
-          onClick={() => muteUnmute(peer.id, false)}
-        />
-      )
-    else
-      return (
-        <Glyph
-          className='mute'
-          style={{ display: 'block' }}
-          type={GlyphType.Volume}
-          size={32}
-          color={Colors.Green}
-          onClick={() => muteUnmute(peer.id, true)}
-        />
-      )
-  }
-
-  const renderTest = (id: string) => {
-    if (isCurrUser) {
-      if (testingMic)
-        return (
-          <Glyph
-            className='stop-test'
-            style={{ display: 'block' }}
-            type={GlyphType.Headphones}
-            size={32}
-            color={Colors.Orange}
-            onClick={() => setTestingMic(false)}
-          />
-        )
-      else
-        return (
-          <Glyph
-            className='test'
-            style={{ display: 'block' }}
-            type={GlyphType.Headphones}
-            size={32}
-            color={Colors.Gray}
-            onClick={() => setTestingMic(true)}
-          />
-        )
-    } else return null
-  }
-
   useEffect(() => {
     if (peer.inCall && currPeer.inCall && stream) {
       connectIsStreamingVolume(peer.id, setOutputting)
@@ -106,17 +51,18 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
     <div className='peer-control' data-name={peer.name} data-incall={peer.inCall} key={peer.id} style={peerStyle()}>
       <img className='avatar' src='/images/avatar.png' alt={peer.id} width='100px' height='100px' style={avatarStyle()} />
       <div className='username'>{peerDisplayName()}</div>
-      <DecibelControl
-        peerId={peer.id}
-        inCall={peer.inCall}
-        threshold={stream?.threshold ?? 0}
-        setThreshold={p => setStreamThreshold(peer.id, p)}
-        gain={stream?.gain ?? 0}
-        setGain={p => setStreamGain(peer.id, p)}
-      />
+      <div className='decibels'>
+        <DecibelControl
+          peerId={peer.id}
+          inCall={peer.inCall}
+          threshold={stream?.threshold ?? 0}
+          setThreshold={p => setStreamThreshold(peer.id, p)}
+          gain={stream?.gain ?? 0}
+          setGain={p => setStreamGain(peer.id, p)}
+        />
+      </div>
       <div className='controls'>
-        {peer.inCall && renderMute(peer.id)}
-        {isCurrUser && peer.inCall && renderTest(peer.id)}
+        <MicControl peerId={peer.id} peerInCall={peer.inCall} isCurrUser={isCurrUser} muted={stream?.muted} />
       </div>
       <style jsx>{`
         .peer-control {
@@ -146,7 +92,7 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
           min-width: 365px;
         }
         .decibels {
-          grid-area: threshold;
+          grid-area: decibels;
         }
         .controls {
           grid-area: controls;

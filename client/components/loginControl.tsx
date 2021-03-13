@@ -23,12 +23,21 @@ const LoginControl = () => {
   return (
     <div className='login'>
       <input ref={usernameRef} onSubmit={submit} className={getClass()} type='text' placeholder='enter user name' onKeyDown={keyDown} />
-      <Glyph type={GlyphType.Submit} size={32} color={Colors.Gray} onClick={submit} />
+      <Glyph
+        options={{
+          type: GlyphType.Submit,
+          size: 32,
+          color: Colors.Gray,
+          viewBox: '4 4 24 24'
+        }}
+        onHoverOptions={{ color: Colors.Light }}
+        onClick={submit}
+      />
       <style jsx>{`
         .login > * {
           float: left;
         }
-        .login input[type=text] {
+        .login input[type='text'] {
           height: 32px;
           margin-right: 5px;
           border: none;

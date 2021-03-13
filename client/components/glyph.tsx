@@ -1,16 +1,24 @@
-import React from 'react'
+import React, { useState } from 'react'
 
 type GlyphProps = {
   className?: string
+  options: GlyphOptions
+  onHoverOptions?: Partial<GlyphOptions>
+  onClick?: () => void
+}
+
+type GlyphOptions = {
   type: GlyphType
   size: number
   color: string // #aabbcc,
-  style?: React.CSSProperties
-  onClick?: () => void
+  style?: React.CSSProperties,
+  viewBox?: string
 }
 
 export enum GlyphType {
   Call,
+  CallOut,
+  CallIn,
   Headphones,
   Volume,
   Deafen,
@@ -24,6 +32,20 @@ const call = (color: string) => (
     id='call'
     fill={color}
     d='M27.01355,23.48859l-1.753,1.75305a5.001,5.001,0,0,1-5.19928,1.18243c-1.97193-.69372-4.87335-2.36438-8.43848-5.9295S6.387,14.028,5.6933,12.05615A5.00078,5.00078,0,0,1,6.87573,6.85687L8.62878,5.10376a1,1,0,0,1,1.41431.00012l2.828,2.8288A1,1,0,0,1,12.871,9.3468L11.0647,11.153a1.0038,1.0038,0,0,0-.0821,1.32171,40.74278,40.74278,0,0,0,4.07624,4.58374,40.74143,40.74143,0,0,0,4.58374,4.07623,1.00379,1.00379,0,0,0,1.32171-.08209l1.80622-1.80627a1,1,0,0,1,1.41412-.00012l2.8288,2.828A1.00007,1.00007,0,0,1,27.01355,23.48859Z'
+  />
+)
+const callOut = (color: string) => (
+  <path
+    id='call-outgoing'
+    fill={color}
+    d='M27.01343,22.07422a1,1,0,0,1,.00012,1.41431l-1.753,1.75317a5.00118,5.00118,0,0,1-5.19928,1.18237c-1.97193-.69372-4.87335-2.36438-8.43848-5.92944S6.387,14.02808,5.6933,12.05615A5.00065,5.00065,0,0,1,6.87573,6.85693L8.62878,5.10376a.99993.99993,0,0,1,1.41431.00012l2.828,2.82874A1,1,0,0,1,12.871,9.3468L11.0647,11.15308a1.00371,1.00371,0,0,0-.0821,1.32165,40.73744,40.73744,0,0,0,4.07624,4.58374,40.75809,40.75809,0,0,0,4.58374,4.0763,1.00394,1.00394,0,0,0,1.32171-.08216l1.80622-1.80627a.99991.99991,0,0,1,1.41412-.00012Zm3.22918-11.83154a6,6,0,1,1,0-8.48536A6.00017,6.00017,0,0,1,30.24261,10.24268ZM28.60529,3.9292a.5.5,0,0,0-.53443-.53442l-3.27179.23413a.5.5,0,0,0-.31787.85229l.81171.81177-1.76776,1.7677a.5.5,0,0,0,0,.70715l.70709.707a.49988.49988,0,0,0,.70709,0L26.70709,6.707l.81171.81177a.5.5,0,0,0,.85223-.31787Z'
+  />
+)
+const callIn = (color: string) => (
+  <path
+    id='call-incoming'
+    fill={color}
+    d='M27.01343,22.07422a1,1,0,0,1,.00012,1.41431l-1.753,1.75317a5.00118,5.00118,0,0,1-5.19928,1.18237c-1.97193-.69372-4.87335-2.36438-8.43848-5.92944S6.387,14.02808,5.6933,12.05615A5.00065,5.00065,0,0,1,6.87573,6.85693L8.62878,5.10376a.99993.99993,0,0,1,1.41431.00012l2.828,2.82874A1,1,0,0,1,12.871,9.3468L11.0647,11.15308a1.00371,1.00371,0,0,0-.0821,1.32165,40.73744,40.73744,0,0,0,4.07624,4.58374,40.75809,40.75809,0,0,0,4.58374,4.0763,1.00394,1.00394,0,0,0,1.32171-.08216l1.80622-1.80627a.99991.99991,0,0,1,1.41412-.00012Zm3.22918-11.83154a6,6,0,1,1,0-8.48536A6.00017,6.00017,0,0,1,30.24261,10.24268Zm-1.76776-6.0105-.70709-.707a.49988.49988,0,0,0-.70709,0L25.29291,5.293,24.4812,4.4812a.5.5,0,0,0-.85223.31787L23.39471,8.0708a.5.5,0,0,0,.53443.53442l3.27179-.23413a.5.5,0,0,0,.31787-.85229L26.70709,6.707l1.76776-1.7677A.5.5,0,0,0,28.47485,4.23218Z'
   />
 )
 const headphones = (color: string) => (
@@ -73,6 +95,10 @@ const renderGlyph = (type: GlyphType, color: string) => {
   switch (type) {
     case GlyphType.Call:
       return call(color)
+    case GlyphType.CallOut:
+      return callOut(color)
+    case GlyphType.CallIn:
+      return callIn(color)
     case GlyphType.Headphones:
       return headphones(color)
     case GlyphType.Volume:
@@ -89,19 +115,23 @@ const renderGlyph = (type: GlyphType, color: string) => {
       return null
   }
 }
-export const Glyph = ({ onClick, type, size, color, style }: GlyphProps) => {
+export const Glyph = ({ options, onHoverOptions, onClick }: GlyphProps) => {
+  const [hover, setHover] = useState<boolean>(false)
+  const completeOptions = hover && onHoverOptions ? {...options, ...onHoverOptions} : options
   return (
     <>
       <svg
         className='glyphicon'
-        onClick={() => onClick ? onClick() : {}}
-        style={style}
+        onClick={() => (onClick ? onClick() : {})}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        style={completeOptions.style}
         xmlns='http://www.w3.org/2000/svg'
-        width={size}
-        height={size}
-        viewBox={'4 4 24 24'}
+        width={completeOptions.size}
+        height={completeOptions.size}
+        viewBox={completeOptions.viewBox ?? '0 0 32 32'}
       >
-        {renderGlyph(type, color)}
+        {renderGlyph(completeOptions.type, completeOptions.color)}
       </svg>
       <style jsx>{`
         .glyphicon {
