@@ -4,7 +4,7 @@
   "description": "A WebRTC voice client for those who don't want some rando hanging around on their chat app.",
   "scripts": {
     "docker:rebuild": "docker-compose down && docker-compose build && docker-compose up -d",
-    "docker:refresh": "docker-compose down && docker-compose pull && docker-compose up -d",
+    "docker:refresh": "docker-compose pull && docker-compose down && docker-compose up -d",
     "install-dependencies": "run-p install-dependencies:server install-dependencies:client",
     "install-dependencies:server": "cd server && yarn --frozen-lockfile",
     "install-dependencies:client": "cd client && yarn --frozen-lockfile",
