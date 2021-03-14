@@ -11,9 +11,7 @@ jobs:
       - uses: microsoft/playwright-github-action@v1
 
       - name: Inject Server Environment Variables
-        run: |
-          cd server
-          echo ${{ secrets.SERVER_ENV_VARIABLES }} > .env
+        run: echo "${{ secrets.SERVER_ENV_VARIABLES }}" > server/.env
 
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
@@ -44,9 +42,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Inject Server Environment Variables
-        run: |
-          cd server
-          echo ${{ secrets.SERVER_ENV_VARIABLES }} > .env
+        run: echo "${{ secrets.SERVER_ENV_VARIABLES }}" > server/.env
 
       - name: Build containers
         run: docker-compose down && docker-compose build
