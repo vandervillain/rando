@@ -1,8 +1,9 @@
-import { useRecoilState, useRecoilValue } from 'recoil'
+import { useRecoilState } from 'recoil'
 import { useStreamContext } from '../../contexts/streamManager'
-import { micTestState, streamSelect } from '../../data/atoms'
+import { micTestState } from '../../data/atoms'
 import { Glyph, GlyphType } from '../glyph'
 import Colors from '../../helpers/colors'
+import { useEffect } from 'react'
 
 type MicControlProps = {
   peerId: string
@@ -28,7 +29,7 @@ const MicControl = ({ peerId, peerInCall, isCurrUser, muted }: MicControlProps) 
             style: { display: 'block' },
           }}
           onHoverOptions={{
-            color: Colors.Green
+            color: Colors.Green,
           }}
           onClick={() => muteUnmute(peerId, false)}
         />
@@ -44,7 +45,7 @@ const MicControl = ({ peerId, peerInCall, isCurrUser, muted }: MicControlProps) 
             style: { display: 'block' },
           }}
           onHoverOptions={{
-            type: GlyphType.Deafen
+            type: GlyphType.Deafen,
           }}
           onClick={() => muteUnmute(peerId, true)}
         />
@@ -83,6 +84,14 @@ const MicControl = ({ peerId, peerInCall, isCurrUser, muted }: MicControlProps) 
         />
       )
   }
+
+  useEffect(() => {
+    return () => {
+      if (!peerInCall && testingMic) {
+        setTestingMic(false)
+      }
+    }
+  }, [peerInCall])
 
   return (
     <div className='mic-control'>

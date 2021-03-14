@@ -3,7 +3,7 @@ import { useRecoilValue } from 'recoil'
 import { roomPeerSelect, streamSelect, userSelect } from '../../data/atoms'
 import { useStreamContext } from '../../contexts/streamManager'
 import DecibelControl from './decibelControl'
-import { isDebug } from '../../helpers/development'
+import { isTest } from '../../helpers/development'
 import MicControl from './micControl'
 
 type PeerControlProps = {
@@ -21,7 +21,7 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
 
   const peerDisplayName = () => (
     <>
-      {peer.name} {isDebug && <>({peer.id})</>}
+      {peer.name} {isTest && <>({peer.id})</>}
     </>
   )
   const peerStyle = () => {

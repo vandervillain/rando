@@ -3,7 +3,7 @@ import { useRecoilState } from 'recoil'
 import { AnalyserFormat, LocalPeerStream, PeerStream, PeerStreamModel } from '../data/stream'
 import { micTestState, streamState, userState } from '../data/atoms'
 import { UserSettings } from '../data/types'
-import { isDebug, isDev } from '../helpers/development'
+import { isTest, isDev } from '../helpers/development'
 
 type StreamManagerContext = {
   getStream: (id: string) => PeerStream | undefined
@@ -188,7 +188,7 @@ export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children 
       }}
     >
       {audioRefs.map((r, i) => (
-        <audio key={i} ref={r} autoPlay hidden={!isDebug} controls muted={shouldAudioBeMuted(i)}></audio>
+        <audio key={i} ref={r} autoPlay hidden={!isTest} controls muted={shouldAudioBeMuted(i)}></audio>
       ))}
       {children}
     </StreamContext.Provider>

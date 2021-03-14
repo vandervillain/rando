@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:test": "set APP_ENV=test && yarn dev",
     "build": "next build",
     "start": "next start",
     "test": "jest",

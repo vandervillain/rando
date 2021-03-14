@@ -1,5 +1,7 @@
 import { chromium, Browser, Page, BrowserContext } from 'playwright'
 
+const clientUrl = "http://localhost:3000"
+
 describe('when navigating a room', () => {
   let log: string = ''
   const users = ['A', 'B', 'C']
@@ -53,23 +55,43 @@ describe('when navigating a room', () => {
     await browser.close()
   })
 
-  test.each(users)('user %p home page loads but does not show a room', async user => {
+  test.each(users)('user %p home page loads, shows create room', async user => {
     const page = getPage(user)
-    await page.goto('http://localhost:3000')
+    await page.goto(clientUrl)
     expect(await page.title()).toBe('rando')
-    expect(await page.$('.room')).toBeNull()
+    expect(await page.$('.create-room')).not.toBeNull()
   })
 
   test.each(users)('user %p can navigate to a room but will not enter room until login', async user => {
     const page = getPage(user)
-    await page.goto('http://localhost:3000/room/123')
+    await page.goto(`${clientUrl}/r/test`)
+
     expect(await page.$('.room')).toBeNull()
+    expect(await page.$('.login input[type="text"]')).not.toBeNull()
   })
 
-  test.each(users)('user %p can login and enter a room', async user => {
+  test.each(users)('user %p can create a room', async user => {
     const page = getPage(user)
+    await page.goto(clientUrl)
+
+    const roomInput = await page.$('.create-room input[type="text"]')
+    const roomSubmit = await page.$('.create-room .submit')
+
+    expect(roomInput).not.toBeNull()
+    expect(roomSubmit).not.toBeNull()
+
+    await roomInput?.type('test')
+    await roomSubmit?.click()
+
+    const login = await page.waitForSelector('.login input[type="text"]')
+    expect(login).not.toBeNull()
+  })
+
+  test.each(users)('user %p can login', async user => {
+    const page = getPage(user)
+
     const login = await page.$('.login input[type="text"]')
-    const loginSubmit = await page.$('.login button')
+    const loginSubmit = await page.$('.login .submit')
 
     expect(login).not.toBeNull()
     expect(loginSubmit).not.toBeNull()
@@ -87,18 +109,18 @@ describe('when navigating a room', () => {
 
   test.each(users)('user %p does not see the "inCall" UI before joining the call', async user => {
     const page = getPage(user)
-    expect(await page.$('.call-control button.leave-call')).toBeNull()
-    expect(await page.$('.call-control button.mute')).toBeNull()
-    expect(await page.$('.call-control button.unmute')).toBeNull()
+    expect(await page.$('.call-control .leave-call')).toBeNull()
+    expect(await page.$('.call-control .mute')).toBeNull()
+    expect(await page.$('.call-control .unmute')).toBeNull()
     // peer control shouldn't have incall styles
     expect(await page.$eval(`.peer-control[data-name=${user}]`, e => getComputedStyle(e).fontWeight)).toBe('400')
     expect(await page.$eval(`.peer-control[data-name=${user}]`, e => getComputedStyle(e).boxShadow)).toBe('none')
     // dont show mute/unmute for current user peer control, ever
-    expect(await page.$(`.peer-control[data-name=${user}] button.mute`)).toBeNull()
-    expect(await page.$(`.peer-control[data-name=${user}] button.unmute`)).toBeNull()
+    expect(await page.$(`.peer-control[data-name=${user}] .mute`)).toBeNull()
+    expect(await page.$(`.peer-control[data-name=${user}] .unmute`)).toBeNull()
     // current user shouldn't have test buttons yet
-    expect(await page.$(`.peer-control[data-name=${user}] button.test`)).toBeNull()
-    expect(await page.$(`.peer-control[data-name=${user}] button.stop-test`)).toBeNull()
+    expect(await page.$(`.peer-control[data-name=${user}] .test`)).toBeNull()
+    expect(await page.$(`.peer-control[data-name=${user}] .stop-test`)).toBeNull()
     // current user shouldn't see decibel control stuff yet
     expect(await page.$(`.peer-control[data-name=${user}] .visualizer`)).toBeNull()
     expect(await page.$(`.peer-control[data-name=${user}] .threshold`)).toBeNull()
@@ -107,30 +129,30 @@ describe('when navigating a room', () => {
 
   test.each(users)('user %p can join call and then see the default "inCall" UI', async user => {
     const page = getPage(user)
-    const joinCall = await page.$('button.join-call')
+    const joinCall = await page.$('.join-call')
     expect(joinCall).not.toBeNull()
     await joinCall?.click()
 
     try {
-      await page.waitForSelector('.call-control button.leave-call', { timeout: 5000 })
+      await page.waitForSelector('.call-control .leave-call', { timeout: 5000 })
     } catch (e) {
       console.error(e)
       await page.screenshot({ path: 'tests/screenshots/join-call-timeout.png', fullPage: true })
     }
 
-    expect(await page.$('.call-control button.leave-call')).not.toBeNull()
-    expect(await page.$('.call-control button.mute')).not.toBeNull()
+    expect(await page.$('.call-control .leave-call')).not.toBeNull()
+    expect(await page.$('.call-control .mute')).not.toBeNull()
     // unmute shouldn't show unless they click mute
-    expect(await page.$('.call-control button.unmute')).toBeNull()
+    expect(await page.$('.call-control .unmute')).toBeNull()
     // peer control should now have incall styles
     expect(await page.$eval(`.peer-control[data-name=${user}]`, e => getComputedStyle(e).fontWeight)).not.toBe('400')
     expect(await page.$eval(`.peer-control[data-name=${user}]`, e => getComputedStyle(e).boxShadow)).not.toBe('none')
     // dont show mute/unmute for current user peer control, ever
-    expect(await page.$(`.peer-control[data-name=${user}] button.mute`)).toBeNull()
-    expect(await page.$(`.peer-control[data-name=${user}] button.unmute`)).toBeNull()
+    expect(await page.$(`.peer-control[data-name=${user}] .mute`)).toBeNull()
+    expect(await page.$(`.peer-control[data-name=${user}] .unmute`)).toBeNull()
     // current user should now have test button
-    expect(await page.$(`.peer-control[data-name=${user}] button.test`)).not.toBeNull()
-    expect(await page.$(`.peer-control[data-name=${user}] button.stop-test`)).toBeNull()
+    expect(await page.$(`.peer-control[data-name=${user}] .test`)).not.toBeNull()
+    expect(await page.$(`.peer-control[data-name=${user}] .stop-test`)).toBeNull()
     // current user should now see decibel control stuff
     expect(await page.$(`.peer-control[data-name=${user}] .visualizer`)).not.toBeNull()
     expect(await page.$(`.peer-control[data-name=${user}] .threshold`)).not.toBeNull()
@@ -144,47 +166,47 @@ describe('when navigating a room', () => {
 
   test.each(users)('user %p toggling self mute works properly', async user => {
     const page = getPage(user)
-    const muteBtn = await page.$('.call-control button.mute')
+    const muteBtn = await page.$('.call-control .mute')
     expect(muteBtn).not.toBeNull()
     await muteBtn?.click()
 
-    const unmuteBtn = await page.$('.call-control button.unmute')
+    const unmuteBtn = await page.$('.call-control .unmute')
     expect(unmuteBtn).not.toBeNull()
     await unmuteBtn?.click()
 
-    expect(await page.$('.call-control button.mute')).not.toBeNull()
-    expect(await page.$('.call-control button.unmute')).toBeNull()
+    expect(await page.$('.call-control .mute')).not.toBeNull()
+    expect(await page.$('.call-control .unmute')).toBeNull()
   })
 
   test.each(users)('user %p toggling test works properly', async user => {
     const page = getPage(user)
-    const testBtn = await page.$('.peer-control button.test')
+    const testBtn = await page.$('.peer-control .test')
     expect(testBtn).not.toBeNull()
     await testBtn?.click()
 
-    const stopTestBtn = await page.$('.peer-control button.stop-test')
+    const stopTestBtn = await page.$('.peer-control .stop-test')
     expect(stopTestBtn).not.toBeNull()
     await stopTestBtn?.click()
 
-    expect(await page.$('.peer-control button.test')).not.toBeNull()
-    expect(await page.$('.peer-control button.stop-test')).toBeNull()
+    expect(await page.$('.peer-control .test')).not.toBeNull()
+    expect(await page.$('.peer-control .stop-test')).toBeNull()
   })
 
   test.each(users)('user %p can mute other users', async user => {
     const page = getPage(user)
 
     for (const otherUser of users.filter(u => u !== user)) {
-      const muteBtn = await page.$(`.peer-control[data-name=${otherUser}] button.mute`)
+      const muteBtn = await page.$(`.peer-control[data-name=${otherUser}] .mute`)
       expect(muteBtn).not.toBeNull()
       await muteBtn?.click()
 
-      const unmuteBtn = await page.$(`.peer-control[data-name=${otherUser}] button.unmute`)
+      const unmuteBtn = await page.$(`.peer-control[data-name=${otherUser}] .unmute`)
       expect(unmuteBtn).not.toBeNull()
-      expect(await page.$(`.peer-control[data-name=${otherUser}] button.mute`)).toBeNull()
+      expect(await page.$(`.peer-control[data-name=${otherUser}] .mute`)).toBeNull()
       await unmuteBtn?.click()
 
-      expect(await page.$(`.peer-control[data-name=${otherUser}] button.unmute`)).toBeNull()
-      expect(await page.$(`.peer-control[data-name=${otherUser}] button.mute`)).not.toBeNull()
+      expect(await page.$(`.peer-control[data-name=${otherUser}] .unmute`)).toBeNull()
+      expect(await page.$(`.peer-control[data-name=${otherUser}] .mute`)).not.toBeNull()
     }
   })
 })

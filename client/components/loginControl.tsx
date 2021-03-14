@@ -24,6 +24,7 @@ const LoginControl = () => {
     <div className='login'>
       <input ref={usernameRef} onSubmit={submit} className={getClass()} type='text' placeholder='enter user name' onKeyDown={keyDown} />
       <Glyph
+        className='submit'
         options={{
           type: GlyphType.Submit,
           size: 32,

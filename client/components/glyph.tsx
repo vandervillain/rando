@@ -115,13 +115,13 @@ const renderGlyph = (type: GlyphType, color: string) => {
       return null
   }
 }
-export const Glyph = ({ options, onHoverOptions, onClick }: GlyphProps) => {
+export const Glyph = ({ className, options, onHoverOptions, onClick }: GlyphProps) => {
   const [hover, setHover] = useState<boolean>(false)
   const completeOptions = hover && onHoverOptions ? {...options, ...onHoverOptions} : options
   return (
     <>
       <svg
-        className='glyphicon'
+        className={'glyphicon ' + className}
         onClick={() => (onClick ? onClick() : {})}
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}

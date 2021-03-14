@@ -24,6 +24,7 @@ const CreateRoom = () => {
     <div className='create-room'>
       <input ref={roomnameRef} onSubmit={submit} className={getClass()} type='text' placeholder='enter room name' onKeyDown={keyDown} />
       <Glyph
+      className='submit'
         options={{
           type: GlyphType.Submit,
           size: 32,
