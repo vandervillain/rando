@@ -13,9 +13,8 @@ jobs:
       - name: Inject Server Environment Variables
         run: |
           cd server
-          touch .env
-          ${{ secrets.SERVER_ENV_VARIABLES }} >> .env
-          
+          echo ${{ secrets.SERVER_ENV_VARIABLES }} > .env
+
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
@@ -47,8 +46,7 @@ jobs:
       - name: Inject Server Environment Variables
         run: |
           cd server
-          touch .env
-          ${{ secrets.SERVER_ENV_VARIABLES }} >> .env
+          echo ${{ secrets.SERVER_ENV_VARIABLES }} > .env
 
       - name: Build containers
         run: docker-compose down && docker-compose build
