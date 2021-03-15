@@ -41,6 +41,9 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v2
 
+      - name: Inject Server Environment Variables
+        run: echo "${{ secrets.SERVER_ENV_VARIABLES }}" > server/.env
+        
       - name: Build containers
         run: docker-compose down && docker-compose build
 
