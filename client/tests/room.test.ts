@@ -70,8 +70,9 @@ describe('when navigating a room', () => {
     expect(await page.$('.login input[type="text"]')).not.toBeNull()
   })
 
-  test.each(users)('user %p can create a room', async user => {
-    const page = getPage(user)
+  let roomUrl: string
+  test(`user ${users[0]} can create a room`, async () => {
+    const page = getPage(users[0])
     await page.goto(clientUrl)
 
     const roomInput = await page.$('.create-room input[type="text"]')
@@ -82,6 +83,16 @@ describe('when navigating a room', () => {
 
     await roomInput?.type('test')
     await roomSubmit?.click()
+
+    const login = await page.waitForSelector('.login input[type="text"]')
+    expect(login).not.toBeNull()
+
+    roomUrl = page.url()
+  })
+
+  test.each(users.filter((u, i) => i !== 0))('user %p can join the room', async user => {
+    const page = getPage(user)
+    await page.goto(roomUrl)
 
     const login = await page.waitForSelector('.login input[type="text"]')
     expect(login).not.toBeNull()
