@@ -1,6 +1,6 @@
 import React, { FunctionComponent, useEffect } from 'react'
 import { useRecoilState } from 'recoil'
-import { io, Socket } from 'socket.io-client'
+import { io, ManagerOptions, Socket, SocketOptions } from 'socket.io-client'
 import { userState } from '../data/atoms'
 import { User } from '../data/types'
 
@@ -42,8 +42,8 @@ export const SessionManager: FunctionComponent = ({ children }) => {
   useEffect(() => {
     if (!socket) {
       bindSocket()
-      
-      const opts = userData.user?.name ? { query: 'userName=' + userData.user.name } : undefined
+
+      const opts: Partial<ManagerOptions & SocketOptions> | undefined = userData.user?.name ? { query: 'userName=' + userData.user.name } : undefined
       socket = io(process.env.NEXT_PUBLIC_SERVER, opts)
     }
   }, [])
