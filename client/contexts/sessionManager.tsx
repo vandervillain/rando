@@ -43,7 +43,7 @@ export const SessionManager: FunctionComponent = ({ children }) => {
     if (!socket) {
       bindSocket()
 
-      const opts: Partial<ManagerOptions & SocketOptions> | undefined = userData.user?.name ? { query: 'userName=' + userData.user.name } : undefined
+      const opts = userData.user?.name ? { query: { userName: userData.user.name } } : undefined
       socket = io(process.env.NEXT_PUBLIC_SERVER, opts)
     }
   }, [])
