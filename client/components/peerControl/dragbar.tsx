@@ -16,7 +16,6 @@ const Dragbar = ({ className, initialValue, onChange }: DragbarProps) => {
       <style jsx>{`
         .dragbar {
           min-height: 0;
-          padding-bottom: 15px;
           margin: 0;
           line-height: 0px;
         }
@@ -29,7 +28,7 @@ const Dragbar = ({ className, initialValue, onChange }: DragbarProps) => {
           appearance: none;
           width: 100%;
           height: 5px;
-          background: #d3d3d3;
+          background: ${Colors.Gray};
           outline: none;
           opacity: 0.7;
           -webkit-transition: 0.2s; /* 0.2 seconds transition on hover */

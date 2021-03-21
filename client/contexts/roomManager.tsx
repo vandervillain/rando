@@ -1,12 +1,13 @@
-import React, { FunctionComponent, useEffect, useRef } from 'react'
+import React, { FunctionComponent, useEffect, useRef, useState } from 'react'
 import { useRecoilState, useRecoilValue } from 'recoil'
-import { io, Socket } from 'socket.io-client'
 import LoginControl from '../components/loginControl'
 import RoomControl from '../components/roomControl'
 import { useRtcConnections } from './rtcConnectionManager'
 import { roomPeerSelect, roomState, userSelect } from '../data/atoms'
 import { useStreamContext } from './streamManager'
 import { Room, RoomPeer } from '../data/types'
+import { useSessionContext } from './sessionManager'
+import { useRouter } from 'next/router'
 
 type RoomManagerContext = {
   joinCall: () => void
@@ -24,8 +25,9 @@ type RoomManagerProps = {
   roomId: string
 }
 
-let socket: Socket = io(process.env.NEXT_PUBLIC_SOCKET)
 export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => {
+  const router = useRouter()
+  const { socket } = useSessionContext()
   const user = useRecoilValue(userSelect)
   const [room, setRoom] = useRecoilState(roomState)
   const roomPeer = useRecoilValue(roomPeerSelect(user?.id))
@@ -35,14 +37,19 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
   const rtc = useRtcConnections()
 
   const onJoinedRoom = (user: RoomPeer, peers: RoomPeer[]) => {
-    console.log(`you joined these peers in ${user.room!.name}:`)
+    console.log(`you joined these peers in ${user.room!.id}:`)
     console.log(peers.map(p => p.id).toString())
     let order = 0
     user.order = order++
     peers.forEach(p => {
       p.order = order++
     })
-    setRoom({ name: user.room!.name, peers: [user, ...peers] })
+    setRoom({ ...user.room!, peers: [user, ...peers] })
+  }
+
+  const onJoinRoomFailure = () => {
+    console.log(`room does not exist`)
+    router.push('/')
   }
 
   const onPeerJoinedRoom = (peer: RoomPeer) => {
@@ -73,7 +80,7 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
       if (peer) {
         const update: RoomPeer = { ...peer, inCall: inCall }
         const peersUpdate = [update, ...roomS.current.peers.filter(p => p.id !== id)]
-        setRoom({ name: roomS.current.name, peers: peersUpdate })
+        setRoom({ ...roomS.current!, peers: peersUpdate })
       }
     }
   }
@@ -109,6 +116,17 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
     setInCall(peer.id, false)
   }
 
+  const onPeerChangedName = (peerId: string, userName: string) => {
+    if (roomS.current) {
+      const peer = roomS.current.peers.find(p => p.id === peerId)
+      if (peer) {
+        const update: RoomPeer = { ...peer, name: userName }
+        const peersUpdate = [update, ...roomS.current.peers.filter(p => p.id !== peerId)]
+        setRoom({ ...roomS.current, peers: peersUpdate })
+      }
+    }
+  }
+
   const onOffer = async (peer: RoomPeer, offer: RTCSessionDescriptionInit) => {
     if (!socket) return
     console.log(`offer received from ${peer.id}`)
@@ -129,7 +147,7 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
 
   const sendIceCandidate = (id: string, c: RTCIceCandidate) => {
     console.log(`send ice candidate to ${id}`)
-    socket.emit('candidate', id, c)
+    socket?.emit('candidate', id, c)
   }
 
   const onCandidate = (id: string, candidate: RTCIceCandidate) => {
@@ -156,20 +174,33 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
     }
   }
 
-  const subscribe = () => {
-    socket.off('joined-room').on('joined-room', onJoinedRoom)
-    socket.off('peer-joining-call').on('peer-joining-call', onPeerJoiningCall)
-    socket.off('offer').on('offer', onOffer)
-    socket.off('answer').on('answer', onAnswer)
-    socket.off('candidate').on('candidate', onCandidate)
-    socket.off('peer-joined-room').on('peer-joined-room', onPeerJoinedRoom)
-    socket.off('peer-left-room').on('peer-left-room', onPeerLeftRoom)
-    socket.off('peer-left-call').on('peer-left-call', onPeerLeftCall)
+  const unbindSocket = () => {
+    if (!socket) return
+    socket.off('joined-room')
+    socket.off('join-room-failed')
+    socket.off('peer-joining-call')
+    socket.off('offer')
+    socket.off('answer')
+    socket.off('candidate')
+    socket.off('peer-joined-room')
+    socket.off('peer-left-room')
+    socket.off('peer-left-call')
+    socket.off('peer-changed-name')
   }
 
-  // const sendCandidate = (id: string, candidate: RTCIceCandidate) => {
-  //   socket.emit('candidate', id, candidate)
-  // }
+  const bindSocket = () => {
+    if (!socket) return
+    socket.on('joined-room', onJoinedRoom)
+    socket.on('join-room-failed', onJoinRoomFailure)
+    socket.on('peer-joining-call', onPeerJoiningCall)
+    socket.on('offer', onOffer)
+    socket.on('answer', onAnswer)
+    socket.on('candidate', onCandidate)
+    socket.on('peer-joined-room', onPeerJoinedRoom)
+    socket.on('peer-left-room', onPeerLeftRoom)
+    socket.on('peer-left-call', onPeerLeftCall)
+    socket.on('peer-changed-name', onPeerChangedName)
+  }
 
   useEffect(() => {
     roomS.current = room
@@ -177,27 +208,25 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
   })
 
   useEffect(() => {
-    if (socket) subscribe()
-    return () => {
-      socket?.disconnect()
-    }
-  }, [socket])
+    unbindSocket()
+    bindSocket()
 
-  useEffect(() => {
-    if (socket) subscribe()
+    return () => {
+      unbindSocket()
+    }
   })
 
   useEffect(() => {
-    if (roomId && user && socket) {
-      console.log('you are joining room ' + roomId)
-      socket.emit('join-room', user.id, user.name, roomId)
+    if (roomId && user?.name && socket && !roomPeer) {
+      console.log('you are attempting to join room ' + roomId)
+      socket?.emit('join-room', roomId)
     }
     return () => {
-      if (!roomId && socket) {
+      if (!roomId) {
         rtc.destroy()
       }
     }
-  }, [roomId, user, socket])
+  }, [roomId, user?.name, socket, roomPeer])
 
   return (
     <RoomContext.Provider
@@ -206,8 +235,8 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
         leaveCall,
       }}
     >
-      {user && <RoomControl />}
-      {!user && <LoginControl />}
+      {user?.name && <RoomControl />}
+      { !user?.name && <LoginControl />}
     </RoomContext.Provider>
   )
 }

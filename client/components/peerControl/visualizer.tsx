@@ -46,6 +46,11 @@ const Visualizer = ({peerId}: VisualizerProps) => {
   return (
     <div className='visualizer'>
       <canvas ref={visualizerRef} width={300} height={10}></canvas>
+      <style jsx>{`
+      canvas {
+        display: block;
+      }
+      `}</style>
     </div>
   )
 }

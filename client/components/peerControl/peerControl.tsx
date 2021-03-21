@@ -19,6 +19,7 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
   const { connectIsStreamingVolume, disconnectIsStreamingVolume, setStreamThreshold, setStreamGain } = useStreamContext()
   const [outputting, setOutputting] = useState<boolean>(false)
 
+  const className = () => currPeer.inCall ? 'peer-control in-call' : 'peer-control'
   const peerDisplayName = () => (
     <>
       {peer.name} {isTest && <>({peer.id})</>}
@@ -48,7 +49,7 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
   }, [peer.inCall, stream])
 
   return (
-    <div className='peer-control' data-name={peer.name} data-incall={peer.inCall} key={peer.id} style={peerStyle()}>
+    <div className={className()} data-name={peer.name} data-incall={peer.inCall} key={peer.id} style={peerStyle()}>
       <img className='avatar' src='/images/avatar.png' alt={peer.id} width='100px' height='100px' style={avatarStyle()} />
       <div className='username'>{peerDisplayName()}</div>
       <div className='decibels'>
@@ -66,33 +67,37 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
       </div>
       <style jsx>{`
         .peer-control {
-          min-width: 500px;
+          min-width: 300px;
           display: grid;
           grid-template-areas:
             'avatar username username'
             'avatar decibels controls';
+          grid-template-rows: .35fr 1fr;
+          grid-template-columns: 100px auto auto;
           grid-gap: 10px;
           background-color: #444;
           padding: 10px;
           margin: 10px;
           border-radius: 60px 60px 60px 60px;
+          transition: min-width 0.3s;
         }
-        .grid-container > * {
-          background-color: rgba(255, 255, 255, 0.8);
-          text-align: center;
-          padding: 20px 0;
-          font-size: 30px;
+
+        .peer-control.in-call {
+          min-width: 450px;
         }
+
         img.avatar {
           border-radius: 50%;
           grid-area: avatar;
         }
         .username {
           grid-area: username;
-          min-width: 365px;
+          line-height: 14px;
+          padding-right: 30px;
         }
         .decibels {
           grid-area: decibels;
+          padding: 8px 0;
         }
         .controls {
           grid-area: controls;

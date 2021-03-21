@@ -1,9 +1,18 @@
 import { Server } from 'http'
 import { Server as SocketIOServer, Socket } from 'socket.io'
-import { ActiveUser } from './types'
+import { ActiveRoom, ActiveUser } from './types'
 
 let io: SocketIOServer
 let activeUsers: ActiveUser[] = []
+let activeRooms: ActiveRoom[] = []
+
+// every minute check to see if there are expired rooms to remove
+setInterval(() => {
+  const now = new Date().getTime()
+  activeRooms = activeRooms.filter(r => r.destroyBy === undefined || r.destroyBy > now)
+}, 60 * 1000)
+
+const randId = () => '_' + Math.random().toString(36).substr(2, 9)
 
 /** for now use this instead of looking up/verifying/retrieving room id  */
 const toRoomId = (roomId: string) => roomId + '-room'
@@ -19,36 +28,66 @@ export const initializeSocketServer = (httpServer: Server) => {
 
   io.on('connection', (socket: Socket) => {
     console.log(`connection ${socket.id}`)
+    console.log(`ip address ${socket.handshake.address}`)
+    // const existingUser = activeUsers.find(u => u.ipAddress === socket.handshake.address)
+    // if (existingUser) {
+    //   console.log(`user ${existingUser.id} will be disconnected because new socket connection has same IP`)
+    //   const existingSocket = io.sockets.sockets.get(existingUser.socketId)
+    //   existingSocket?.emit('duplicate-ip-error')
+    //   if (existingSocket) existingSocket.disconnect()
+    // }
+    const userName = (socket.handshake.query as any).userName ?? null
+    activeUsers.push({
+      id: randId(),
+      socketId: socket.id,
+      ipAddress: socket.handshake.address,
+      name: userName,
+      room: null,
+      inCall: false,
+    })
+
     bindSocket(socket)
   })
 }
 
 export const getActiveUsers = () => activeUsers
+export const getActiveRooms = () => activeRooms
 
 const bindSocket = (socket: Socket) => {
   const currUser = () => activeUsers.find(u => u.socketId == socket.id)
-  const setRoom = async (roomName: string | null) => {
+  const setRoom = async (roomId: string | null) => {
     const activeUser = currUser()
     if (activeUser) {
-      if (activeUser.room) socket.leave(activeUser.room.id)
-      activeUser.room = null
-      if (roomName) {
-        const roomId = toRoomId(roomName)
-        await socket.join(roomId)
-        activeUser.room = {
-          id: roomId,
-          name: roomName,
+      if (activeUser.room) {
+        socket.leave(activeUser.room.id)
+
+        // if no more users in room, set to destroy in 5 min
+        const oldRoom = activeRooms.find(r => r.id === activeUser.room!.id)
+        if (oldRoom) {
+          const count = await getRoomPeerCount(oldRoom.id)
+          if (count === 0) oldRoom.destroyBy = new Date().getTime() + 60 * 1000
         }
-        return activeUser.room
+        activeUser.room = null
+      }
+
+      if (roomId) {
+        const room = activeRooms.find(r => r.id === roomId)
+        if (room) {
+          room.destroyBy = undefined
+          await socket.join(roomId)
+          activeUser.room = room
+          return activeUser.room
+        } else console.error(`room ${roomId} not found`)
       }
     } else console.error('user not found')
     return null
   }
-  const leaveRoom = () => {
+  const leaveRoom = async () => {
     const activeUser = currUser()
     if (activeUser && activeUser.room) {
       const roomId = activeUser.room.id
       console.log(`${activeUser.name} leaving room ${roomId}`)
+
       // let others in room know that peer left room
       socket.in(roomId).broadcast.emit('peer-left-room', activeUser)
       setRoom(null)
@@ -56,36 +95,58 @@ const bindSocket = (socket: Socket) => {
     }
   }
 
-  socket.on('join-room', async (userId: string, userName: string, roomName: string) => {
+  socket.on('login', async (userName: string) => {
+    const user = currUser()
+    if (user) user.name = userName
+    socket.emit('logged-in', user)
+  })
+
+  socket.on('set-username', async (userName: string) => {
+    const user = currUser()
+    if (user) {
+      user.name = userName
+      if (user.room) {
+        socket.to(user.room.id).broadcast.emit('peer-changed-name', user.id, userName)
+      }
+    }
+  })
+
+  socket.on('create-room', async (roomName: string) => {
+    console.log('create-room')
+    //if (!activeRooms.some(r => r.createdBy === socket.id)) {
+    const room = {
+      id: randId(),
+      name: roomName,
+      createdBy: socket.id,
+    }
+    activeRooms.push(room)
+    socket.emit('created-room', room.id)
+    //}
+  })
+
+  socket.on('join-room', async (roomId: string) => {
     console.log('join-room')
 
     // if user is in a room, let peers know they are leaving
     leaveRoom()
 
-    // joining a room makes a user active, add to activeUsers if not already there
-    let activeUser = activeUsers.find(u => u.id === userId)
-    if (!activeUser) {
-      activeUser = {
-        id: userId,
-        socketId: socket.id,
-        name: userName,
-        room: null,
-        inCall: false,
+    let activeUser = activeUsers.find(u => u.socketId === socket.id)
+    if (activeUser) {
+      await setRoom(roomId)
+      if (activeUser.room) {
+        console.log(`${activeUser.name} joined room ${activeUser.room.id}`)
+
+        // let others in this room know that this peer has joined
+        socket.to(activeUser.room.id).broadcast.emit('peer-joined-room', activeUser)
+
+        // let this peer know which peers are already in this room/in call
+        const peers = activeUsers.filter(u => u.room && u.room.id == activeUser!.room!.id && u.id !== activeUser?.id) //await getPeers(roomName)
+        socket.emit('joined-room', activeUser, peers)
+        return
       }
-      activeUsers.push(activeUser)
     }
-
-    await setRoom(roomName)
-    if (activeUser.room) {
-      console.log(`${activeUser.name} joined room ${activeUser.room.id}`)
-
-      // let others in this room know that this peer has joined
-      socket.to(activeUser.room.id).broadcast.emit('peer-joined-room', activeUser)
-
-      // let this peer know which peers are already in this room/in call
-      const peers = activeUsers.filter(u => u.room && u.room.id == activeUser!.room!.id && u.id !== activeUser?.id) //await getPeers(roomName)
-      socket.emit('joined-room', activeUser, peers)
-    } else console.error('user failed to join room')
+    console.error('user failed to join room')
+    socket.emit('join-room-failed')
   })
 
   socket.on('leave-room', () => {
@@ -164,10 +225,7 @@ const bindSocket = (socket: Socket) => {
 
   socket.on('disconnecting', () => {
     console.log('disconnecting')
-    const activeUser = currUser()
-    socket.rooms.forEach(roomId => {
-      socket.in(roomId).emit('peer-left-room', activeUser)
-    })
+    leaveRoom()
   })
 
   socket.on('disconnect', () => {
@@ -175,4 +233,7 @@ const bindSocket = (socket: Socket) => {
     const activeUser = currUser()
     if (activeUser) activeUsers = activeUsers.filter(u => u.id !== activeUser.id)
   })
+
+  if (currUser()?.name !== '')
+    socket.emit('logged-in', currUser())
 }

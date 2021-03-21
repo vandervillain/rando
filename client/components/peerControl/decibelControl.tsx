@@ -23,14 +23,10 @@ const DecibelControl = ({ peerId, inCall, threshold, gain, setThreshold, setGain
         <>
           <Visualizer peerId={peerId} />
           {peerId === user?.id && <Dragbar className='threshold' initialValue={threshold} onChange={p => setThreshold(p)} />}
+          <br />
           <Dragbar className='gain' initialValue={gain} onChange={p => setGain(p)} />
         </>
       )}
-      <style jsx>{`
-      .decibel-control {
-        width: 300px;
-      }
-      `}</style>
     </div>
   )
 }

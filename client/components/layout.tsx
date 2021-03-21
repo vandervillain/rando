@@ -1,9 +1,10 @@
 import Head from 'next/head'
 import React, { FunctionComponent } from 'react'
-import { AuthManager } from '../contexts/authManager'
+import { SessionManager } from '../contexts/sessionManager'
 import { RTCConnectionManager } from '../contexts/rtcConnectionManager'
 import { StreamManager } from '../contexts/streamManager'
 import { RecoilRoot } from 'recoil'
+import Colors from '../helpers/colors'
 
 const Layout: FunctionComponent = ({ children }) => {
   return (
@@ -14,11 +15,11 @@ const Layout: FunctionComponent = ({ children }) => {
       </Head>
       <main>
         <RecoilRoot>
-          <AuthManager>
+          <SessionManager>
             <StreamManager>
               <RTCConnectionManager>{children}</RTCConnectionManager>
             </StreamManager>
-          </AuthManager>
+          </SessionManager>
         </RecoilRoot>
       </main>
       <footer>
@@ -69,41 +70,6 @@ const Layout: FunctionComponent = ({ children }) => {
           text-decoration: none;
         }
 
-        .title a {
-          color: #0070f3;
-          text-decoration: none;
-        }
-
-        .title a:hover,
-        .title a:focus,
-        .title a:active {
-          text-decoration: underline;
-        }
-
-        .title {
-          margin: 0;
-          line-height: 1.15;
-          font-size: 4rem;
-        }
-
-        .title,
-        .description {
-          text-align: center;
-        }
-
-        .description {
-          line-height: 1.5;
-          font-size: 1.5rem;
-        }
-
-        code {
-          background: #fafafa;
-          border-radius: 5px;
-          padding: 0.75rem;
-          font-size: 1.1rem;
-          font-family: Menlo, Monaco, Lucida Console, Liberation Mono, DejaVu Sans Mono, Bitstream Vera Sans Mono, Courier New, monospace;
-        }
-
         .grid {
           display: flex;
           align-items: center;
@@ -112,40 +78,6 @@ const Layout: FunctionComponent = ({ children }) => {
 
           max-width: 800px;
           margin-top: 3rem;
-        }
-
-        .card {
-          margin: 1rem;
-          flex-basis: 45%;
-          padding: 1.5rem;
-          text-align: left;
-          color: inherit;
-          text-decoration: none;
-          border: 1px solid #eaeaea;
-          border-radius: 10px;
-          transition: color 0.15s ease, border-color 0.15s ease;
-        }
-
-        .card:hover,
-        .card:focus,
-        .card:active {
-          color: #0070f3;
-          border-color: #0070f3;
-        }
-
-        .card h3 {
-          margin: 0 0 1rem 0;
-          font-size: 1.5rem;
-        }
-
-        .card p {
-          margin: 0;
-          font-size: 1.25rem;
-          line-height: 1.5;
-        }
-
-        .logo {
-          height: 1em;
         }
 
         @media (max-width: 600px) {
@@ -167,6 +99,15 @@ const Layout: FunctionComponent = ({ children }) => {
 
         * {
           box-sizing: border-box;
+        }
+
+        h2 {
+          text-align: center;
+        }
+
+        a {
+          color: ${Colors.Green};
+          text-decoration: none;
         }
       `}</style>
     </div>

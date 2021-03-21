@@ -1,12 +1,12 @@
 import React, { useState } from 'react'
-import { useAuthContext } from '../contexts/authManager'
+import { useSessionContext } from '../contexts/sessionManager'
 import { Glyph, GlyphType } from './glyph'
 import Colors from '../helpers/colors'
 
 const LoginControl = () => {
   const [error, setError] = useState<boolean>(false)
   const usernameRef = React.createRef<HTMLInputElement>()
-  const auth = useAuthContext()
+  const auth = useSessionContext()
 
   const submit = () => {
     const value = usernameRef.current?.value
@@ -22,7 +22,9 @@ const LoginControl = () => {
 
   return (
     <div className='login'>
-      <input ref={usernameRef} onSubmit={submit} className={getClass()} type='text' placeholder='enter user name' onKeyDown={keyDown} />
+      <h2>who are you?</h2>
+      <div className="input">
+      <input ref={usernameRef} onSubmit={submit} className={getClass()} type='text' placeholder='enter user name' onKeyDown={keyDown} maxLength={16} />
       <Glyph
         className='submit'
         options={{
@@ -34,8 +36,9 @@ const LoginControl = () => {
         onHoverOptions={{ color: Colors.Light }}
         onClick={submit}
       />
+      </div>
       <style jsx>{`
-        .login > * {
+        .login .input > * {
           float: left;
         }
         .login input[type='text'] {
