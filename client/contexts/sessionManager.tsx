@@ -1,6 +1,6 @@
 import React, { FunctionComponent, useEffect } from 'react'
 import { useRecoilState } from 'recoil'
-import { io, ManagerOptions, Socket, SocketOptions } from 'socket.io-client'
+import { io, Socket } from 'socket.io-client'
 import { userState } from '../data/atoms'
 import { User } from '../data/types'
 

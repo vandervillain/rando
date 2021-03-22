@@ -2,8 +2,8 @@ import React, { FunctionComponent, useEffect } from 'react'
 import { useRecoilState } from 'recoil'
 import { AnalyserFormat, LocalPeerStream, PeerStream, PeerStreamModel } from '../data/stream'
 import { micTestState, streamState, userState } from '../data/atoms'
-import { UserSettings } from '../data/types'
-import { isTest, isDev } from '../helpers/development'
+import { UserData, UserSettings } from '../data/types'
+import { isTest } from '../helpers/development'
 
 type StreamManagerContext = {
   getStream: (id: string) => PeerStream | undefined
@@ -44,7 +44,7 @@ export interface AudioSource {
 
 let peerStreams: PeerStream[] = []
 export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children }) => {
-  const [userData] = useRecoilState(userState)
+  const [userData, setUserData] = useRecoilState(userState)
   const [streams, setStreams] = useRecoilState(streamState)
   const [testingMic] = useRecoilState(micTestState)
   const audioRefs = [
@@ -59,12 +59,12 @@ export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children 
   const getStreamByIndex = (i: number) => peerStreams.find(p => p.index === i)
   const addStream = <T extends PeerStream>(stream: T, mediaStream: MediaStream, opts?: UserSettings) => {
     stream.setStream(mediaStream, opts ?? { threshold: 0.5, gain: 0.5 })
-    
+
     // assign an audio ref index
     for (let i = 0; i < audioRefs.length; i++) {
       if (!peerStreams.some(p => p.index === i)) {
         stream.index = i
-        break;
+        break
       }
     }
 
@@ -120,17 +120,29 @@ export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children 
 
   const setStreamThreshold = (id: string, p: number) => {
     const stream = getStream(id)
-    if (stream) {
-      stream?.setThreshold(p)
-    }
+    if (stream) stream?.setThreshold(p)
+
+    setUserData(prev => {
+      const clone: UserData = {
+        user: prev.user,
+        settings: { ...prev.settings, threshold: p },
+      }
+      return clone
+    })
     updateStreamState()
   }
 
   const setStreamGain = (id: string, p: number) => {
     const stream = getStream(id)
-    if (stream) {
-      stream?.setGain(p)
-    }
+    if (stream) stream?.setGain(p)
+
+    setUserData(prev => {
+      const clone: UserData = {
+        user: prev.user,
+        settings: { ...prev.settings, gain: p },
+      }
+      return clone
+    })
     updateStreamState()
   }
 
@@ -164,9 +176,11 @@ export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children 
       })
       peerStreams = peerStreams.filter(p => !p.destroy)
       console.log('peerStreams indexes:')
-      peerStreams.sort(p => p.index!).forEach(p => {
-        console.log(`${p.index}: ${p.id}`)
-      })
+      peerStreams
+        .sort(p => p.index!)
+        .forEach(p => {
+          console.log(`${p.index}: ${p.id}`)
+        })
       updateStreamState()
     }
   })

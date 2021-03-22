@@ -160,6 +160,13 @@ export class LocalPeerStream extends PeerStream {
     this.thresholdAnalyser = new ThresholdAnalyser(this.audioCtx, 0.25)
   }
 
+  setStream = (stream: MediaStream, options: StreamOptions) => {
+    this.preStream = stream
+    this.gain = options.gain
+    this.thresholdAnalyser.setThreshold(options.threshold)
+    this.gainNode.gain.value = options.gain * this.maxGain
+  }
+
   connect = (audioRef: React.RefObject<HTMLAudioElement>) => {
     if (this.preStream && audioRef.current && !this.isConnected) {
       const source = this.audioCtx.createMediaStreamSource(this.preStream)
