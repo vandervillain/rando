@@ -27,7 +27,7 @@ type RoomManagerProps = {
 
 export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => {
   const router = useRouter()
-  const { socket } = useSessionContext()
+  const { signalr } = useSessionContext()
   const user = useRecoilValue(userSelect)
   const [room, setRoom] = useRecoilState(roomState)
   const roomPeer = useRecoilValue(roomPeerSelect(user?.id))
@@ -91,7 +91,7 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
   }
 
   const onPeerJoiningCall = async (peer: RoomPeer) => {
-    if (!socket) return
+    if (!signalr) return
     console.log(`${peer.name} is joining the call`)
 
     // if current user is in call too, then start up connection workflow
@@ -102,7 +102,7 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
         // send the new peer an offer to connect
         const offer = await peerConnection.createOffer()
         await peerConnection.setLocalDescription(offer)
-        socket.emit('offer', peer.id, offer)
+        signalr.sendOffer(peer.id, offer)
       }
     }
 
@@ -116,26 +116,26 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
     setInCall(peer.id, false)
   }
 
-  const onPeerChangedName = (peerId: string, userName: string) => {
+  const onPeerChangedName = (peer: RoomPeer) => {
     if (roomS.current) {
-      const peer = roomS.current.peers.find(p => p.id === peerId)
-      if (peer) {
-        const update: RoomPeer = { ...peer, name: userName }
-        const peersUpdate = [update, ...roomS.current.peers.filter(p => p.id !== peerId)]
+      const roomPeer = roomS.current.peers.find(p => p.id === peer.id)
+      if (roomPeer) {
+        const update: RoomPeer = { ...roomPeer, name: peer.name }
+        const peersUpdate = [update, ...roomS.current.peers.filter(p => p.id !== peer.id)]
         setRoom({ ...roomS.current, peers: peersUpdate })
       }
     }
   }
 
   const onOffer = async (peer: RoomPeer, offer: RTCSessionDescriptionInit) => {
-    if (!socket) return
+    if (!signalr) return
     console.log(`offer received from ${peer.id}`)
     const peerConnection = initConnection(peer)
     if (peerConnection) {
       await peerConnection.setRemoteDescription(new RTCSessionDescription(offer))
       const answer = await peerConnection.createAnswer()
       await peerConnection.setLocalDescription(answer)
-      socket.emit('answer', peer.id, answer)
+      signalr.sendAnswer(peer.id, answer)
     }
   }
 
@@ -147,7 +147,7 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
 
   const sendIceCandidate = (id: string, c: RTCIceCandidate) => {
     console.log(`send ice candidate to ${id}`)
-    socket?.emit('candidate', id, c)
+    signalr?.sendCandidate(id, c)
   }
 
   const onCandidate = (id: string, candidate: RTCIceCandidate) => {
@@ -156,50 +156,66 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
   }
 
   const joinCall = async () => {
-    if (user && roomS.current && socket) {
+    if (user && roomS.current && signalr) {
       console.log('you are joining the call')
       await streamMic(user.id)
-      socket?.emit('join-call', roomS.current.name)
+      await signalr.joinCall()
       setInCall(user.id, true)
     }
   }
 
   const leaveCall = () => {
-    if (user && roomS.current && socket) {
+    if (user && roomS.current && signalr) {
       console.log('you are leaving the call')
       rtc.destroy()
       removeStream(user.id)
-      socket.emit('leave-call', roomS.current.name)
+      signalr.leaveCall()
       setInCall(user.id, false)
     }
   }
 
   const unbindSocket = () => {
-    if (!socket) return
-    socket.off('joined-room')
-    socket.off('join-room-failed')
-    socket.off('peer-joining-call')
-    socket.off('offer')
-    socket.off('answer')
-    socket.off('candidate')
-    socket.off('peer-joined-room')
-    socket.off('peer-left-room')
-    socket.off('peer-left-call')
-    socket.off('peer-changed-name')
+    if (!signalr) return
+    signalr.unbindRoomEvents()
+    // if (!socket) return
+    // socket.off('joined-room')
+    // socket.off('join-room-failed')
+    // socket.off('peer-joining-call')
+    // socket.off('offer')
+    // socket.off('answer')
+    // socket.off('candidate')
+    // socket.off('peer-joined-room')
+    // socket.off('peer-left-room')
+    // socket.off('peer-left-call')
+    // socket.off('peer-changed-name')
   }
 
   const bindSocket = () => {
-    if (!socket) return
-    socket.on('joined-room', onJoinedRoom)
-    socket.on('join-room-failed', onJoinRoomFailure)
-    socket.on('peer-joining-call', onPeerJoiningCall)
-    socket.on('offer', onOffer)
-    socket.on('answer', onAnswer)
-    socket.on('candidate', onCandidate)
-    socket.on('peer-joined-room', onPeerJoinedRoom)
-    socket.on('peer-left-room', onPeerLeftRoom)
-    socket.on('peer-left-call', onPeerLeftCall)
-    socket.on('peer-changed-name', onPeerChangedName)
+    if (!signalr) return
+
+    signalr.bindRoomEvents({
+      onJoinedRoom,
+      onJoinRoomFailure,
+      onPeerJoinedRoom,
+      onPeerJoiningCall,
+      onPeerLeftRoom,
+      onPeerLeftCall,
+      onPeerChangedName,
+      onOffer,
+      onAnswer,
+      onCandidate
+    })
+    // if (!socket) return
+    // socket.on('joined-room', onJoinedRoom)
+    // socket.on('join-room-failed', onJoinRoomFailure)
+    // socket.on('peer-joining-call', onPeerJoiningCall)
+    // socket.on('offer', onOffer)
+    // socket.on('answer', onAnswer)
+    // socket.on('candidate', onCandidate)
+    // socket.on('peer-joined-room', onPeerJoinedRoom)
+    // socket.on('peer-left-room', onPeerLeftRoom)
+    // socket.on('peer-left-call', onPeerLeftCall)
+    // socket.on('peer-changed-name', onPeerChangedName)
   }
 
   useEffect(() => {
@@ -208,7 +224,6 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
   })
 
   useEffect(() => {
-    unbindSocket()
     bindSocket()
 
     return () => {
@@ -217,17 +232,19 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
   })
 
   useEffect(() => {
-    if (roomId && user?.name && socket && !roomPeer) {
+    if (roomId && user?.name && signalr && !roomPeer) {
       console.log('you are attempting to join room ' + roomId)
-      socket?.emit('join-room', roomId)
+      signalr.joinRoom(roomId)
     }
     return () => {
       if (!roomId) {
         rtc.destroy()
       }
     }
-  }, [roomId, user?.name, socket, roomPeer])
+  }, [roomId, user?.name, signalr, roomPeer])
 
+  console.log('user: ')
+  console.log(user)
   return (
     <RoomContext.Provider
       value={{

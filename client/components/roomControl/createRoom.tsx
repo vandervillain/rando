@@ -1,32 +1,22 @@
 import { useRouter } from 'next/router'
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { Glyph, GlyphType } from '../glyph'
 import Colors from '../../helpers/colors'
 import { useSessionContext } from '../../contexts/sessionManager'
 
 const CreateRoom = () => {
   const router = useRouter()
-  const { socket } = useSessionContext()
+  const { signalr } = useSessionContext()
   const [error, setError] = useState<string | null>(null)
   const roomnameRef = React.createRef<HTMLInputElement>()
 
-  const unbindSocket = () => {
-    if (!socket) return
-    socket.off('created-room')
-  }
-
-  const bindSocket = () => {
-    if (!socket) return
-    socket.on('created-room', (roomId: string, err?: string) => {
-      if (!err) router.push('/r/' + roomId)
-    })
-  }
-
-  const submit = () => {
+  const submit = async () => {
     const value = roomnameRef.current?.value
-    if (!value) setError('')
-    else if (socket) {
-      socket.emit('create-room', value)
+    if (!value) setError('must enter a room name!')
+    else if (signalr) {
+      const roomId = await signalr.createRoom(value)
+      console.log(`route to /r/${roomId}`)
+      router.push('/r/' + roomId)
     }
   }
 
@@ -35,15 +25,6 @@ const CreateRoom = () => {
   }
 
   const getClass = () => (error ? 'error' : '')
-
-  useEffect(() => {
-    unbindSocket()
-    bindSocket()
-
-    return () => {
-      unbindSocket()
-    }
-  }, [socket])
 
   return (
     <div className='create-room'>

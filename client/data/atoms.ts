@@ -1,5 +1,5 @@
 import { atom, DefaultValue, selector, selectorFamily } from 'recoil'
-import { PeerStreamModel } from '../data/stream'
+import { PeerStreamModel } from './stream'
 import { UserData, Room } from './types'
 
 const localStorageEffect = (key: string) => ({ setSelf, onSet }: any) => {

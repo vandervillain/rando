@@ -25,7 +25,7 @@
     "**/*.tsx", 
     "server.js",
     "pages/api/challenge.js" 
-  ],
+, "data"  ],
   "exclude": [
     "node_modules"
   ]
