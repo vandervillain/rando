@@ -19,6 +19,8 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
   const { connectIsStreamingVolume, disconnectIsStreamingVolume, setStreamThreshold, setStreamGain } = useStreamContext()
   const [outputting, setOutputting] = useState<boolean>(false)
 
+  if (!currPeer || !peer) return null
+
   const className = () => currPeer.inCall ? 'peer-control in-call' : 'peer-control'
   const peerDisplayName = () => (
     <>

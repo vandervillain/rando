@@ -54,8 +54,8 @@ namespace signalr_function.Functions
             {
                 log.LogInformation($"{connId} exiting room {user.Room.Id}");
                 await ToPeers(connId, ClientEvent.peerLeftRoom, user);
-                roomMgr.UserLeaveRoom(connId);
                 await Groups.RemoveFromGroupAsync(connId, user.Room.Id);
+                roomMgr.UserLeaveRoom(connId);
             }
             //await UserGroups.RemoveFromAllGroupsAsync(connId);
         }

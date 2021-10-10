@@ -1,7 +1,13 @@
 name: Publish
-on: push
-  #release:
-    #types: [published]
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+    branches:
+      - master
+#   #release:
+#     #types: [published]
 jobs:
   test:
     name: Test
@@ -43,7 +49,7 @@ jobs:
 
       - name: Inject Server Environment Variables
         run: echo "${{ secrets.SERVER_ENV_VARIABLES }}" > server/.env
-        
+
       - name: Build containers
         run: docker-compose down && docker-compose build
 
