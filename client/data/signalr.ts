@@ -6,22 +6,36 @@ export class SignalRWrapper {
   connection: signalR.HubConnection | null = null
   connected: boolean = false
 
-  private buildConnection() {
+  private buildConnection(userId: string) {
     return new signalR.HubConnectionBuilder()
       .withAutomaticReconnect()
       .withUrl(this.url, {
         headers: {
-          'x-ms-signalr-user-id': Math.random().toString(36).substr(2, 9),
-        }
+          'x-ms-signalr-user-id': userId,
+        },
       })
       .build()
   }
 
-  connect = (setSocketReady: (r: boolean) => void): Promise<void> =>
+  login = async (name: string): Promise<User> => {
+    const r = await fetch(`${this.url}/Login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        id: Math.random().toString(36).substr(2, 9),
+        name
+      })
+    })
+    return await r.json()
+  }
+
+  connect = (userId: string, setSocketReady: (r: boolean) => void): Promise<void> =>
     new Promise((resolve, reject) => {
       if (!this.connection) {
         try {
-          this.connection = this.buildConnection()
+          this.connection = this.buildConnection(userId)
 
           this.connection.onclose(() => {
             console.log('signalr connection closed')
@@ -54,7 +68,7 @@ export class SignalRWrapper {
               this.connected = false
               setSocketReady(false)
               this.connection = null
-              setTimeout(() => this.connect(setSocketReady), 30 * 1000)
+              setTimeout(() => this.connect(userId, setSocketReady), 30 * 1000)
             })
         } catch (e) {
           this.connected = false
@@ -65,25 +79,8 @@ export class SignalRWrapper {
       }
     })
 
-  unbindSessionEvents() {
-    if (!this.connection) return
-    this.connection.off('loggedIn')
-  }
-
-  bindSessionEvents(e: ISessionEventHandlers) {
-    if (!this.connection) return
-    this.unbindSessionEvents()
-
-    this.connection.on('loggedIn', e.onLoggedIn)
-  }
-
-  async login(name: string) {
-    if (!this.connection) return
-    await this.connection.send('login', name)
-  }
-
   async createRoom(roomName: string) {
-    if (!this.connection) return 
+    if (!this.connection) return
     console.log(`createRoom(${roomName})`)
     console.log(this.connection)
     return await this.connection.invoke('createRoom', roomName)
@@ -94,7 +91,7 @@ export class SignalRWrapper {
 
     this.connection.off('joinedRoom')
     this.connection.off('joinRoomFailed')
-    this.connection.off('peerJoiningVall')
+    this.connection.off('peerJoiningCall')
     this.connection.off('offer')
     this.connection.off('answer')
     this.connection.off('candidate')
@@ -114,39 +111,50 @@ export class SignalRWrapper {
     this.connection.on('offer', e.onOffer)
     this.connection.on('answer', e.onAnswer)
     this.connection.on('candidate', e.onCandidate)
-    this.connection.on('peerJoined-room', e.onPeerJoinedRoom)
+    this.connection.on('peerJoinedRoom', e.onPeerJoinedRoom)
     this.connection.on('peerLeftRoom', e.onPeerLeftRoom)
     this.connection.on('peerLeftCall', e.onPeerLeftCall)
     this.connection.on('peerChangedName', e.onPeerChangedName)
   }
 
+  async setUserName(userName: string) {
+    console.log(`set username to ${userName}`)
+    if (this.connection) await this.connection.send('setUserName', userName)
+  }
+
   async sendOffer(peerId: string, offer: RTCSessionDescriptionInit) {
+    console.log(`sending offer to ${peerId}`)
     if (this.connection) await this.connection.send('offer', peerId, offer)
   }
 
   async sendAnswer(peerId: string, answer: RTCSessionDescriptionInit) {
+    console.log(`sending answer to ${peerId}`)
     if (this.connection) await this.connection.send('answer', peerId, answer)
   }
 
   async sendCandidate(peerId: string, candidate: RTCIceCandidate) {
+    console.log(`sending candidate to ${peerId}`)
     if (this.connection) await this.connection.send('candidate', peerId, candidate)
   }
 
   async joinRoom(roomId: string) {
+    console.log(`joining room ${roomId}`)
     if (this.connection) await this.connection.invoke('joinRoom', roomId)
   }
 
   async joinCall() {
+    console.log(`joining call`)
     if (this.connection) await this.connection.invoke('joinCall')
   }
 
   async leaveCall() {
+    console.log(`leaving call`)
     if (this.connection) await this.connection.invoke('leaveCall')
   }
 }
 
 export interface ISessionEventHandlers {
-  onLoggedIn: (user: User) => void
+  onConnected: (user: User) => void
 }
 
 export interface IRoomEventHandlers {

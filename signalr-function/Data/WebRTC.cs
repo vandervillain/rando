@@ -4,13 +4,13 @@ using System.Text;
 
 namespace signalr_function.Data
 {
-    public interface RTCSessionDescriptionInit
+    public class RTCSessionDescriptionInit
     {
         public string sdp { get; set; }
         public string type { get; set; }
     }
 
-    public interface RTCIceCandidate
+    public class RTCIceCandidate
     {
         public string address { get; set; }
         public string candidate { get; set; }
@@ -26,6 +26,5 @@ namespace signalr_function.Data
         public string tcpType { get; set; }
         public string type { get; set; }
         public string usernameFragment { get; set; }
-        public string toJSON();
     }
 }

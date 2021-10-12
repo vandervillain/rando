@@ -146,7 +146,6 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
   }
 
   const sendIceCandidate = (id: string, c: RTCIceCandidate) => {
-    console.log(`send ice candidate to ${id}`)
     signalr?.sendCandidate(id, c)
   }
 
@@ -181,6 +180,7 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
 
   const bindSocket = () => {
     if (!signalr) return
+    unbindSocket()
 
     signalr.bindRoomEvents({
       onJoinedRoom,
@@ -221,8 +221,6 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
     }
   }, [roomId, user?.name, signalr, roomPeer])
 
-  console.log('user: ')
-  console.log(user)
   return (
     <RoomContext.Provider
       value={{

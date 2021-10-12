@@ -43,7 +43,7 @@ namespace signalr_function.Data
                 .OrderBy(e => Guid.NewGuid())
                 .Take(6)
                 .ToList().ForEach(e => builder.Append(e));
-            return builder.ToString();
+            return builder.ToString().ToLower();
         }
 
         public ActiveUser GetUserById(string userId)
@@ -66,18 +66,18 @@ namespace signalr_function.Data
             return activeRooms.FirstOrDefault(r => r.Id == roomId);
         }
 
-        public void AddActiveUser(string connectionId, string userId)
+        public ActiveUser AddActiveUser(string userId, string connectionId)
         {
-            //string id = RandomId();
-            //while (activeUsers.Any(u => u.Id == id)) id = RandomId();
-
-            activeUsers.Add(new ActiveUser()
-            {
-                Id = userId,//RandomId(),
-                SocketId = connectionId
-            });
-
-            //return id;
+            var user = activeUsers.FirstOrDefault(u => u.Id == userId);
+            if (user == null) {
+                user = new ActiveUser()
+                {
+                    Id = userId,
+                    SocketId = connectionId
+                };
+                activeUsers.Add(user);
+            } else user.SocketId = connectionId;
+            return user;
         }
 
         public void RemoveActiveUser(string connectionId)
@@ -141,6 +141,14 @@ namespace signalr_function.Data
             var user = activeUsers.FirstOrDefault(u => u.SocketId == connectionId);
             if (user != null)
                 user.InCall = true;
+            return user;
+        }
+
+        public ActiveUser UserLeaveCall(string connectionId)
+        {
+            var user = activeUsers.FirstOrDefault(u => u.SocketId == connectionId);
+            if (user != null)
+                user.InCall = false;
             return user;
         }
 

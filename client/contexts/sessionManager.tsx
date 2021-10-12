@@ -1,57 +1,44 @@
 import React, { FunctionComponent, useEffect, useState } from 'react'
 import { useRecoilState } from 'recoil'
 import LoginControl from '../components/loginControl'
-import { socketState, userState } from '../data/atoms'
+import { userState } from '../data/atoms'
 import { SignalRWrapper } from '../data/signalr'
 
 type SessionContext = {
   login: (name: string) => void
   signalr: SignalRWrapper | null
-  //socket: Socket | null
 }
 
 const AuthManagerContext = React.createContext<SessionContext>({
   login: (name: string) => {},
   signalr: null,
-  //socket: null,
 })
 
 export const useSessionContext = () => React.useContext(AuthManagerContext)
 
-//let socket: Socket | null = null
-let signalr: SignalRWrapper | null
+let signalr: SignalRWrapper = new SignalRWrapper()
 export const SessionManager: FunctionComponent = ({ children }) => {
   const [userData, setUserData] = useRecoilState(userState)
   const [socketReady, setSocketReady] = useState(signalr?.connected)
 
   console.log('sessionManager reload')
   console.log(`socketReady: ${socketReady}`)
-  console.log(`userData: ${userData}`)
-  
+  console.log(`user: ${userData.user?.id}, ${userData.user?.name}`)
+
   const login = async (name: string) => {
-    if (!signalr) return null
     console.log(`logging in as ${name}`)
-    return await signalr.login(name)
+    var user = await signalr.login(name)
+    setUserData({ ...userData, user })
   }
 
   useEffect(() => {
-    if (!signalr) {
-      signalr = new SignalRWrapper()
-      signalr
-        .connect(r => setSocketReady(r))
-        .then(() => {
-          console.log('signalr connected')
-          signalr?.bindSessionEvents({
-            onLoggedIn: user => setUserData({ ...userData, user }),
-          })
-        })
-    }
-  }, [])
-
-  const renderChildren = () => children
-
-  console.log(`socketReady: ${socketReady}`)
-  console.log(`userData: ${userData}`)
+    if (userData.user && userData.user.id && userData.user.name)
+      signalr.connect(userData.user.id, ready => {
+        if (ready && userData.user?.name)
+          signalr.setUserName(userData.user.name)
+        setSocketReady(ready)
+      })
+  }, [userData.user?.id])
 
   return (
     <AuthManagerContext.Provider
@@ -61,7 +48,7 @@ export const SessionManager: FunctionComponent = ({ children }) => {
       }}
     >
       {socketReady && !userData && <LoginControl />}
-      {socketReady && userData && renderChildren()}
+      {socketReady && userData && children}
     </AuthManagerContext.Provider>
   )
 }

@@ -8,6 +8,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Azure.WebJobs.Extensions.SignalRService;
 using signalr_function.Data;
+using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 
 namespace signalr_function.Functions
 {
@@ -20,6 +22,26 @@ namespace signalr_function.Functions
         {
             roomMgr = mgr;
             log = logger;
+        }
+
+        [FunctionName(nameof(Login))]
+        public async Task<IActionResult> Login([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequest req,
+        [SignalR(HubName = nameof(RoomFunctions))] IAsyncCollector<SignalRMessage> signalRMessages)
+        {
+            log.LogInformation($"{nameof(Login)}: {req.GetDisplayUrl()}");
+            bool authorized = true;
+            if (!authorized)
+            {
+                log.LogError("Unauthorized Request");
+                return new UnauthorizedResult();
+            }
+
+            using (StreamReader streamReader = new StreamReader(req.Body))
+            {
+                string requestBody = await streamReader.ReadToEndAsync();
+                ActiveUser user = await Task.Run(() => JsonConvert.DeserializeObject<ActiveUser>(requestBody));
+                return new OkObjectResult(user);
+            }
         }
 
         private async Task ToClient(string connId, ClientEvent eventType, params object[] args)
@@ -70,8 +92,8 @@ namespace signalr_function.Functions
         [FunctionName(nameof(OnConnected))]
         public void OnConnected([SignalRTrigger] InvocationContext context)
         {
-            roomMgr.AddActiveUser(context.ConnectionId, context.UserId);
-            log.LogInformation($"{nameof(OnConnected)}: {context.ConnectionId} {context.UserId}");
+            roomMgr.AddActiveUser(context.UserId, context.ConnectionId);
+            log.LogInformation($"{nameof(OnConnected)}: {context.UserId} connected as {context.ConnectionId}");
         }
 
         [FunctionName(nameof(OnDisconnected))]
@@ -81,19 +103,6 @@ namespace signalr_function.Functions
             // TODO: don't remove immediately to allow reconnect? or if reconnecting does it not hit this?
             ExitRoom(context.ConnectionId).GetAwaiter().GetResult();
             roomMgr.RemoveActiveUser(context.ConnectionId);
-        }
-
-        [FunctionName(nameof(Login))]
-        public ActiveUser Login([SignalRTrigger] InvocationContext context, string userName)
-        {
-            log.LogInformation($"{nameof(Login)}: {context.ConnectionId}");
-
-            if (!string.IsNullOrWhiteSpace(userName))
-            {
-                var user = roomMgr.SetUserName(context.ConnectionId, userName);
-                return user;
-            }
-            return null;
         }
 
         [FunctionName(nameof(SetUserName))]
@@ -158,10 +167,22 @@ namespace signalr_function.Functions
         }
 
         [FunctionName(nameof(LeaveRoom))]
-        public async Task LeaveRoom([SignalRTrigger] InvocationContext context, string roomId)
+        public async Task LeaveRoom([SignalRTrigger] InvocationContext context)
         {
             log.LogInformation($"{nameof(LeaveRoom)}: {context.ConnectionId}");
             await ExitRoom(context.ConnectionId);
+        }
+
+        [FunctionName(nameof(LeaveCall))]
+        public async Task LeaveCall([SignalRTrigger] InvocationContext context)
+        {
+            log.LogInformation($"{nameof(LeaveRoom)}: {context.ConnectionId}");
+            var user = roomMgr.GetUserByConnId(context.ConnectionId);
+            if (user != null && user.RoomId != null)
+            {
+                await ToPeers(context.ConnectionId, ClientEvent.peerLeftCall, user);
+                roomMgr.UserLeaveCall(context.ConnectionId);
+            }
         }
 
         [FunctionName(nameof(Offer))]
@@ -219,7 +240,7 @@ namespace signalr_function.Functions
                 else
                 {
                     log.LogInformation($"user {user.Id} sending a candidate to peer {peer.Id}");
-                    await ToClient(peer.SocketId, ClientEvent.answer, user, candidate);
+                    await ToClient(peer.SocketId, ClientEvent.candidate, user.Id, candidate);
                 }
             }
         }
