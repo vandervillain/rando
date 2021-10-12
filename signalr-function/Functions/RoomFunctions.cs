@@ -25,7 +25,7 @@ namespace signalr_function.Functions
         private async Task ToClient(string connId, ClientEvent eventType, params object[] args)
         {
             var user = roomMgr.GetUserByConnId(connId);
-            if (user != null && user.Room.Id != null)
+            if (user != null && user.RoomId != null)
                 await Clients.Client(connId).SendCoreAsync(eventType.ToString(), args);
         }
 
@@ -43,18 +43,18 @@ namespace signalr_function.Functions
 
         private async Task ToPeers(ActiveUser user, ClientEvent eventType, params object[] args)
         {
-            if (user != null && user.Room.Id != null)
-                await Clients.GroupExcept(user.Room.Id, new string[] { user.SocketId }).SendCoreAsync(eventType.ToString(), args);
+            if (user != null && user.RoomId != null)
+                await Clients.GroupExcept(user.RoomId, new string[] { user.SocketId }).SendCoreAsync(eventType.ToString(), args);
         }
 
         private async Task ExitRoom(string connId)
         {
             var user = roomMgr.GetUserByConnId(connId);
-            if (user != null && user.Room != null)
+            if (user != null && user.RoomId != null)
             {
-                log.LogInformation($"{connId} exiting room {user.Room.Id}");
+                log.LogInformation($"{connId} exiting room {user.RoomId}");
                 await ToPeers(connId, ClientEvent.peerLeftRoom, user);
-                await Groups.RemoveFromGroupAsync(connId, user.Room.Id);
+                await Groups.RemoveFromGroupAsync(connId, user.RoomId);
                 roomMgr.UserLeaveRoom(connId);
             }
             //await UserGroups.RemoveFromAllGroupsAsync(connId);
@@ -132,12 +132,13 @@ namespace signalr_function.Functions
 
             if (!string.IsNullOrWhiteSpace(roomId))
             {
+                var room = roomMgr.GetRoom(roomId);
                 var usersInRoom = roomMgr.GetUsersInRoom(roomId);
                 var user = roomMgr.UserJoinRoom(context.ConnectionId, roomId);
                 if (user != null) 
                 {
                     await Groups.AddToGroupAsync(context.ConnectionId, roomId);
-                    await ToClient(context.ConnectionId, ClientEvent.joinedRoom, user, usersInRoom);
+                    await ToClient(context.ConnectionId, ClientEvent.joinedRoom, user, room, usersInRoom);
                     await ToPeers(user, ClientEvent.peerJoinedRoom, user);
                 }
             }
@@ -149,7 +150,7 @@ namespace signalr_function.Functions
             log.LogInformation($"{nameof(JoinCall)}: {context.ConnectionId}");
 
             var user = roomMgr.UserJoinCall(context.ConnectionId);
-            if (user != null && user.Room != null)
+            if (user != null && user.RoomId != null)
             {
                 // tell other clients in this room that user is joining call
                 await ToPeers(user, ClientEvent.peerJoiningCall, user);
@@ -174,7 +175,7 @@ namespace signalr_function.Functions
                 var peer = roomMgr.GetUserById(userId);
                 if (user == null) log.LogError($"user {user.Id} not found");
                 else if (peer == null) log.LogError($"peer {user.Id} not found");
-                else if (user.Room?.Id != peer.Room?.Id) log.LogError($"user is in room {user.Room?.Id} but peer is in room {peer.Room?.Id}");
+                else if (user.RoomId != peer.RoomId) log.LogError($"user is in room {user.RoomId} but peer is in room {peer.RoomId}");
                 else
                 {
                     log.LogInformation($"user {user.Id} sending an offer to peer {peer.Id}");
@@ -194,7 +195,7 @@ namespace signalr_function.Functions
                 var peer = roomMgr.GetUserById(userId);
                 if (user == null) log.LogError($"user {user.Id} not found");
                 else if (peer == null) log.LogError($"peer {user.Id} not found");
-                else if (user.Room?.Id != peer.Room?.Id) log.LogError($"user is in room {user.Room?.Id} but peer is in room {peer.Room?.Id}");
+                else if (user.RoomId != peer.RoomId) log.LogError($"user is in room {user.RoomId} but peer is in room {peer.RoomId}");
                 else
                 {
                     log.LogInformation($"user {user.Id} sending an answer to peer {peer.Id}");
@@ -214,7 +215,7 @@ namespace signalr_function.Functions
                 var peer = roomMgr.GetUserById(userId);
                 if (user == null) log.LogError($"user {user.Id} not found");
                 else if (peer == null) log.LogError($"peer {user.Id} not found");
-                else if (user.Room?.Id != peer.Room?.Id) log.LogError($"user is in room {user.Room?.Id} but peer is in room {peer.Room?.Id}");
+                else if (user.RoomId != peer.RoomId) log.LogError($"user is in room {user.RoomId} but peer is in room {peer.RoomId}");
                 else
                 {
                     log.LogInformation($"user {user.Id} sending a candidate to peer {peer.Id}");

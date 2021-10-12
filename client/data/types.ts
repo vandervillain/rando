@@ -17,7 +17,7 @@ export interface RoomPeer {
   id: string
   socketId: string
   name: string
-  room: Room | null
+  roomId: string
   inCall: boolean
   order: number
 }

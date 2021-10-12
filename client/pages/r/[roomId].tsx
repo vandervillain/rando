@@ -1,5 +1,6 @@
 import { useRouter } from 'next/router'
 import React from 'react'
+import { Header } from '../../components/header'
 import Layout from '../../components/layout'
 import { RoomManager } from '../../contexts/roomManager'
 
@@ -10,6 +11,7 @@ const RoomPage = () => {
 
   return roomName ? (
     <Layout>
+      <Header />
       <RoomManager roomId={roomName} />      
     </Layout>
   ) : null

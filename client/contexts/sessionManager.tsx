@@ -1,9 +1,8 @@
-import React, { FunctionComponent, useEffect } from 'react'
+import React, { FunctionComponent, useEffect, useState } from 'react'
 import { useRecoilState } from 'recoil'
-import { io, Socket } from 'socket.io-client'
-import { userState } from '../data/atoms'
+import LoginControl from '../components/loginControl'
+import { socketState, userState } from '../data/atoms'
 import { SignalRWrapper } from '../data/signalr'
-import { User } from '../data/types'
 
 type SessionContext = {
   login: (name: string) => void
@@ -23,7 +22,12 @@ export const useSessionContext = () => React.useContext(AuthManagerContext)
 let signalr: SignalRWrapper | null
 export const SessionManager: FunctionComponent = ({ children }) => {
   const [userData, setUserData] = useRecoilState(userState)
+  const [socketReady, setSocketReady] = useState(signalr?.connected)
 
+  console.log('sessionManager reload')
+  console.log(`socketReady: ${socketReady}`)
+  console.log(`userData: ${userData}`)
+  
   const login = async (name: string) => {
     if (!signalr) return null
     console.log(`logging in as ${name}`)
@@ -33,14 +37,21 @@ export const SessionManager: FunctionComponent = ({ children }) => {
   useEffect(() => {
     if (!signalr) {
       signalr = new SignalRWrapper()
-      signalr.connect().then(() => {
-        console.log('signalr connected')
-        signalr?.bindSessionEvents({
-          onLoggedIn: user => setUserData({ ...userData, user }),
+      signalr
+        .connect(r => setSocketReady(r))
+        .then(() => {
+          console.log('signalr connected')
+          signalr?.bindSessionEvents({
+            onLoggedIn: user => setUserData({ ...userData, user }),
+          })
         })
-      })
     }
   }, [])
+
+  const renderChildren = () => children
+
+  console.log(`socketReady: ${socketReady}`)
+  console.log(`userData: ${userData}`)
 
   return (
     <AuthManagerContext.Provider
@@ -49,7 +60,8 @@ export const SessionManager: FunctionComponent = ({ children }) => {
         signalr,
       }}
     >
-      {children}
+      {socketReady && !userData && <LoginControl />}
+      {socketReady && userData && renderChildren()}
     </AuthManagerContext.Provider>
   )
 }

@@ -58,7 +58,12 @@ namespace signalr_function.Data
 
         public List<ActiveUser> GetUsersInRoom(string roomId)
         {
-            return activeUsers.Where(u => u.Room != null && u.Room.Id == roomId).ToList();
+            return activeUsers.Where(u => u.RoomId != null && u.RoomId == roomId).ToList();
+        }
+
+        public ActiveRoom GetRoom(string roomId)
+        {
+            return activeRooms.FirstOrDefault(r => r.Id == roomId);
         }
 
         public void AddActiveUser(string connectionId, string userId)
@@ -103,16 +108,16 @@ namespace signalr_function.Data
             var user = activeUsers.FirstOrDefault(u => u.SocketId == connectionId);
             if (user != null)
             {
-                if (user.Room != null)
+                if (user.RoomId != null)
                 {
-                    var room = activeRooms.FirstOrDefault(r => r.Id == user.Room.Id);
+                    var room = activeRooms.FirstOrDefault(r => r.Id == user.RoomId);
                     if (room != null)
                     {
                         room.UserCount--;
                         if (room.UserCount <= 0)
                             room.DestroyBy = DateTime.Now.AddMilliseconds(emptyRoomExpiration);
                     }
-                    user.Room = null;
+                    user.RoomId = null;
                 }
             }
             return user;
@@ -124,7 +129,7 @@ namespace signalr_function.Data
             var room = activeRooms.FirstOrDefault(r => r.Id == roomId);
             if (user != null && room != null)
             {
-                user.Room = room;
+                user.RoomId = room.Id;
                 room.UserCount++;
                 room.DestroyBy = null;
             }
@@ -159,8 +164,8 @@ namespace signalr_function.Data
         [JsonProperty("name")]
         public string Name { get; set; }
 
-        [JsonProperty("room")]
-        public ActiveRoom? Room { get; set; }
+        [JsonProperty("roomId")]
+        public string RoomId { get; set; }
 
         [JsonProperty("inCall")]
         public bool InCall { get; set; }

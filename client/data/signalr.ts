@@ -1,10 +1,10 @@
 import * as signalR from '@microsoft/signalr'
-import { RoomPeer, User } from './types'
+import { Room, RoomPeer, User } from './types'
 
 export class SignalRWrapper {
   url = process.env.NEXT_PUBLIC_SERVER
   connection: signalR.HubConnection | null = null
-  connected = false
+  connected: boolean = false
 
   private buildConnection() {
     return new signalR.HubConnectionBuilder()
@@ -17,7 +17,7 @@ export class SignalRWrapper {
       .build()
   }
 
-  connect = (): Promise<void> =>
+  connect = (setSocketReady: (r: boolean) => void): Promise<void> =>
     new Promise((resolve, reject) => {
       if (!this.connection) {
         try {
@@ -26,6 +26,7 @@ export class SignalRWrapper {
           this.connection.onclose(() => {
             console.log('signalr connection closed')
             this.connected = false
+            setSocketReady(false)
           })
 
           this.connection.onreconnecting(() => {
@@ -35,12 +36,14 @@ export class SignalRWrapper {
           this.connection.onreconnected(() => {
             console.log('signalr reconnected')
             this.connected = true
+            setSocketReady(true)
           })
 
           this.connection
             .start()
             .then(() => {
               this.connected = true
+              setSocketReady(true)
               console.info('signalr connection started at ' + this.url)
               resolve()
             })
@@ -49,11 +52,13 @@ export class SignalRWrapper {
               console.error(`websocket connection failed to start at ${this.url}, retrying in 30 seconds`)
               this.connection?.stop()
               this.connected = false
+              setSocketReady(false)
               this.connection = null
-              setTimeout(() => this.connect(), 30 * 1000)
+              setTimeout(() => this.connect(setSocketReady), 30 * 1000)
             })
         } catch (e) {
           this.connected = false
+          setSocketReady(false)
           console.error(e)
           reject()
         }
@@ -145,7 +150,7 @@ export interface ISessionEventHandlers {
 }
 
 export interface IRoomEventHandlers {
-  onJoinedRoom: (user: RoomPeer, peers: RoomPeer[]) => void
+  onJoinedRoom: (user: RoomPeer, room: Room, peers: RoomPeer[]) => void
   onJoinRoomFailure: () => void
   onPeerJoinedRoom: (peer: RoomPeer) => void
   onPeerJoiningCall: (peer: RoomPeer) => Promise<void>

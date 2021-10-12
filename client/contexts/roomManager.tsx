@@ -36,15 +36,15 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
   const { streamMic, removeStream } = useStreamContext()
   const rtc = useRtcConnections()
 
-  const onJoinedRoom = (user: RoomPeer, peers: RoomPeer[]) => {
-    console.log(`you joined these peers in ${user.room!.id}:`)
+  const onJoinedRoom = (user: RoomPeer, room: Room, peers: RoomPeer[]) => {
+    console.log(`you joined these peers in ${user.roomId}:`)
     console.log(peers.map(p => p.id).toString())
     let order = 0
     user.order = order++
     peers.forEach(p => {
       p.order = order++
     })
-    setRoom({ ...user.room!, peers: [user, ...peers] })
+    setRoom({ ...room, peers: [user, ...peers] })
   }
 
   const onJoinRoomFailure = () => {
@@ -177,17 +177,6 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
   const unbindSocket = () => {
     if (!signalr) return
     signalr.unbindRoomEvents()
-    // if (!socket) return
-    // socket.off('joined-room')
-    // socket.off('join-room-failed')
-    // socket.off('peer-joining-call')
-    // socket.off('offer')
-    // socket.off('answer')
-    // socket.off('candidate')
-    // socket.off('peer-joined-room')
-    // socket.off('peer-left-room')
-    // socket.off('peer-left-call')
-    // socket.off('peer-changed-name')
   }
 
   const bindSocket = () => {
@@ -205,17 +194,6 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
       onAnswer,
       onCandidate
     })
-    // if (!socket) return
-    // socket.on('joined-room', onJoinedRoom)
-    // socket.on('join-room-failed', onJoinRoomFailure)
-    // socket.on('peer-joining-call', onPeerJoiningCall)
-    // socket.on('offer', onOffer)
-    // socket.on('answer', onAnswer)
-    // socket.on('candidate', onCandidate)
-    // socket.on('peer-joined-room', onPeerJoinedRoom)
-    // socket.on('peer-left-room', onPeerLeftRoom)
-    // socket.on('peer-left-call', onPeerLeftCall)
-    // socket.on('peer-changed-name', onPeerChangedName)
   }
 
   useEffect(() => {
