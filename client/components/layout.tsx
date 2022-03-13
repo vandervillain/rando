@@ -1,10 +1,10 @@
 import Head from 'next/head'
 import React, { FunctionComponent } from 'react'
-import { SessionManager } from '../contexts/sessionManager'
+import { SessionProvider } from '../contexts/sessionManager'
 import { RTCConnectionManager } from '../contexts/rtcConnectionManager'
-import { StreamManager } from '../contexts/streamManager'
-import { RecoilRoot } from 'recoil'
+import { StreamProvider } from '../contexts/streamManager'
 import Colors from '../helpers/colors'
+import { SignalRProvider } from '../contexts/signalRManager'
 
 const Layout: FunctionComponent = ({ children }) => {
   return (
@@ -14,16 +14,15 @@ const Layout: FunctionComponent = ({ children }) => {
         <link rel='icon' href='/favicon.ico' />
       </Head>
       <main>
-        <RecoilRoot>
-          <SessionManager>
-            <StreamManager>
+        <SessionProvider>
+          <SignalRProvider>
+            <StreamProvider>
               <RTCConnectionManager>{children}</RTCConnectionManager>
-            </StreamManager>
-          </SessionManager>
-        </RecoilRoot>
+            </StreamProvider>
+          </SignalRProvider>
+        </SessionProvider>
       </main>
-      <footer>
-      </footer>
+      <footer></footer>
 
       <style jsx>{`
         .container {
@@ -49,7 +48,7 @@ const Layout: FunctionComponent = ({ children }) => {
         footer {
           width: 100%;
           height: 100px;
-          border-top: 1px solid #eaeaea;
+          border: none;
           display: flex;
           justify-content: center;
           align-items: center;
@@ -93,8 +92,8 @@ const Layout: FunctionComponent = ({ children }) => {
         body {
           padding: 0;
           margin: 0;
-          font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue,
-            sans-serif;
+          font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu,
+            Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
         }
 
         * {

@@ -6,12 +6,12 @@ import Colors from '../helpers/colors'
 const LoginControl = () => {
   const [error, setError] = useState<boolean>(false)
   const usernameRef = React.createRef<HTMLInputElement>()
-  const auth = useSessionContext()
+  const { login } = useSessionContext()
 
   const submit = () => {
     const value = usernameRef.current?.value
     if (!value) setError(true)
-    else auth.login(value)
+    else login(value)
   }
 
   const keyDown = (e: React.KeyboardEvent) => {

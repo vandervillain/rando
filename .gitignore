@@ -2,6 +2,12 @@
 
 dist
 
+#azure storage emulator
+__blobstorage__
+__queuestorage__
+__azurite_db*
+azurite.log
+
 #secrets
 .env
 

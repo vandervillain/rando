@@ -1,13 +1,11 @@
 import React from 'react'
-import { useRecoilState } from "recoil"
-import { userState } from '../data/atoms'
-import { UserData } from '../data/types'
+import { useSessionContext } from '../contexts/sessionManager'
 
 export const Header = () => {
-  const [userData] = useRecoilState<UserData>(userState)
+  const {user} = useSessionContext()
   return (
     <div className={'header'}>
-      {userData?.user?.name}
+      {user?.name}
     </div>
   )
 }

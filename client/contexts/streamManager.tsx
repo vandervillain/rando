@@ -1,11 +1,13 @@
-import React, { FunctionComponent, useEffect } from 'react'
-import { useRecoilState } from 'recoil'
+import React, { FunctionComponent, useEffect, useMemo, useState } from 'react'
 import { AnalyserFormat, LocalPeerStream, PeerStream, PeerStreamModel } from '../data/stream'
-import { micTestState, streamState, userState } from '../data/atoms'
-import { UserData, UserSettings } from '../data/types'
+import { UserSettings } from '../data/types'
 import { isTest } from '../helpers/development'
+import { useSessionContext } from './sessionManager'
 
 type StreamManagerContext = {
+  streams: PeerStreamModel[]
+  testingMic: boolean
+  setTestingMic: (testing: boolean) => void
   getStream: (id: string) => PeerStream | undefined
   addRemoteStream: (id: string, mediaStream: MediaStream) => void
   removeStream: (id: string) => void
@@ -19,21 +21,15 @@ type StreamManagerContext = {
   setStreamGain: (id: string, p: number) => void
 }
 
-const StreamContext = React.createContext<StreamManagerContext>({
-  getStream: (id: string) => undefined,
-  addRemoteStream: (id: string, mediaStream: MediaStream) => {},
-  removeStream: (id: string) => {},
-  muteUnmute: (id: string, mute: boolean) => {},
-  connectVisualizer: (id: string, callback: (p: number) => void) => {},
-  disconnectVisualizer: (id: string) => {},
-  connectIsStreamingVolume: (id: string, callback: (output: boolean) => void) => {},
-  disconnectIsStreamingVolume: (id: string) => {},
-  streamMic: (id: string) => {},
-  setStreamThreshold: (id: string, p: number) => {},
-  setStreamGain: (id: string, p: number) => {},
-})
+const Context = React.createContext<StreamManagerContext | undefined>(undefined)
 
-export const useStreamContext = () => React.useContext(StreamContext)
+export const useStreamContext = (): StreamManagerContext => {
+  const context = React.useContext(Context)
+  if (context === undefined)
+    throw new Error('useStreamContext must be used within a StreamManagerContext')
+
+  return context
+}
 
 type StreamManagerProps = {}
 
@@ -43,10 +39,11 @@ export interface AudioSource {
 }
 
 let peerStreams: PeerStream[] = []
-export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children }) => {
-  const [userData, setUserData] = useRecoilState(userState)
-  const [streams, setStreams] = useRecoilState(streamState)
-  const [testingMic] = useRecoilState(micTestState)
+
+export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children }) => {
+  const { user, settings, setUserGain, setUserThreshold } = useSessionContext()
+  const [streams, setStreams] = useState<PeerStreamModel[]>([])
+  const [testingMic, setTestingMic] = useState<boolean>(false)
   const audioRefs = [
     React.createRef<HTMLAudioElement>(),
     React.createRef<HTMLAudioElement>(),
@@ -57,7 +54,11 @@ export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children 
 
   const getStream = (id: string) => peerStreams.find(s => s.id === id)
   const getStreamByIndex = (i: number) => peerStreams.find(p => p.index === i)
-  const addStream = <T extends PeerStream>(stream: T, mediaStream: MediaStream, opts?: UserSettings) => {
+  const addStream = <T extends PeerStream>(
+    stream: T,
+    mediaStream: MediaStream,
+    opts?: UserSettings
+  ) => {
     stream.setStream(mediaStream, opts ?? { threshold: 0.5, gain: 0.5 })
 
     // assign an audio ref index
@@ -73,16 +74,25 @@ export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children 
 
     stream.connect(audioRefs[stream.index])
     peerStreams.push(stream)
-    updateStreamState()
+
+    setStreams(peerStreams.map((s, i) => new PeerStreamModel(s)))
   }
-  const addRemoteStream = (id: string, mediaStream: MediaStream) => addStream(new PeerStream(id), mediaStream)
-  const addLocalStream = (id: string, mediaStream: MediaStream, opts: UserSettings) => addStream(new LocalPeerStream(id), mediaStream, opts)
+  const addRemoteStream = (id: string, mediaStream: MediaStream) => {
+    console.debug(`addRemoteStream ${id}`)
+    addStream(new PeerStream(id), mediaStream)
+  }
+  const addLocalStream = (id: string, mediaStream: MediaStream, opts: UserSettings) => {
+    console.debug(`addLocalStream ${id}`)
+    addStream(new LocalPeerStream(id), mediaStream, opts)
+  }
 
   const removeStream = (id: string) => {
+    console.debug(`removeStream ${id}`)
     const stream = getStream(id)
     if (stream) {
       stream.disconnect()
-      updateStreamState()
+      peerStreams = peerStreams.filter(p => p.id !== id)
+      setStreams(peerStreams.map((s, i) => new PeerStreamModel(s)))
     }
   }
 
@@ -107,104 +117,121 @@ export const StreamManager: FunctionComponent<StreamManagerProps> = ({ children 
     console.log('attempting to get microphone stream')
     const stream = await window.navigator.mediaDevices.getUserMedia({
       video: false,
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: false,
-      },
+      audio: true,
     })
     console.log('obtained local stream from mic')
-    addLocalStream(id, stream, userData.settings)
-    updateStreamState()
+    addLocalStream(id, stream, settings)
   }
 
   const setStreamThreshold = (id: string, p: number) => {
+    console.debug(`setStreamThreshold ${id}: ${p}`)
     const stream = getStream(id)
     if (stream) stream?.setThreshold(p)
 
-    setUserData(prev => {
-      const clone: UserData = {
-        user: prev.user,
-        settings: { ...prev.settings, threshold: p },
-      }
-      return clone
-    })
-    updateStreamState()
+    if (id === user!.id) setUserThreshold(p)
+
+    setStreams(peerStreams.map((s, i) => new PeerStreamModel(s)))
   }
 
   const setStreamGain = (id: string, p: number) => {
+    console.debug(`setStreamGain ${id}: ${p}`)
     const stream = getStream(id)
     if (stream) stream?.setGain(p)
 
-    setUserData(prev => {
-      const clone: UserData = {
-        user: prev.user,
-        settings: { ...prev.settings, gain: p },
-      }
-      return clone
-    })
-    updateStreamState()
+    if (id === user!.id) setUserGain(p)
+
+    setStreams(peerStreams.map((s, i) => new PeerStreamModel(s)))
   }
 
   const muteUnmute = (id: string, mute: boolean) => {
+    console.debug(`muteUnmute ${id}: ${mute}`)
     const stream = getStream(id)
     stream?.toggleStream(!mute)
 
-    updateStreamState()
+    setStreams(peerStreams.map((s, i) => new PeerStreamModel(s)))
   }
+
   const shouldAudioBeMuted = (index: number) => {
     const peerStream = getStreamByIndex(index)
     if (peerStream) {
-      const currUser = peerStream.id === userData.user?.id
+      const currUser = peerStream.id === user?.id
       if (currUser) return !testingMic
       else return !peerStream.isEnabled()
     }
     return true
   }
 
-  const updateStreamState = () => {
-    setStreams(peerStreams.map((s, i) => new PeerStreamModel(s)))
-  }
-
   useEffect(() => {
-    let destroyAny = peerStreams.some(p => p.destroy)
-    if (destroyAny) {
-      peerStreams.forEach(p => {
-        if (p.destroy) {
-          audioRefs[p.index!].current!.srcObject = null
-        }
+    const toDestroy = peerStreams.filter(p => !streams.some(s => s.id === p.id)).map(p => p.index)
+
+    toDestroy.forEach(index => {
+      audioRefs[index!].current!.srcObject = null
+    })
+
+    console.log('peerStreams indexes:')
+    peerStreams
+      .sort(p => p.index!)
+      .forEach(p => {
+        console.log(`${p.index}: ${p.id}`)
       })
-      peerStreams = peerStreams.filter(p => !p.destroy)
-      console.log('peerStreams indexes:')
-      peerStreams
-        .sort(p => p.index!)
-        .forEach(p => {
-          console.log(`${p.index}: ${p.id}`)
-        })
-      updateStreamState()
-    }
-  })
+  }, [streams.length])
+
+  const audios = useMemo(
+    () =>
+      audioRefs.map((r, i) => (
+        <audio
+          key={i}
+          ref={r}
+          autoPlay
+          hidden={!isTest}
+          controls
+          muted={shouldAudioBeMuted(i)}
+        ></audio>
+      )),
+    [streams]
+  )
+
+  const streamContext = useMemo(
+    () => ({
+      streams,
+      testingMic,
+      setTestingMic: (testing: boolean) => {
+        setTestingMic(testing)
+      },
+      getStream,
+      addRemoteStream,
+      removeStream,
+      muteUnmute,
+      connectVisualizer,
+      disconnectVisualizer,
+      connectIsStreamingVolume,
+      disconnectIsStreamingVolume,
+      streamMic,
+      setStreamThreshold,
+      setStreamGain,
+    }),
+    [
+      streams,
+      testingMic,
+      setTestingMic,
+      getStream,
+      addRemoteStream,
+      removeStream,
+      muteUnmute,
+      connectVisualizer,
+      disconnectVisualizer,
+      connectIsStreamingVolume,
+      disconnectIsStreamingVolume,
+      streamMic,
+      setStreamThreshold,
+      setStreamGain,
+    ]
+  )
 
   return (
-    <StreamContext.Provider
-      value={{
-        getStream,
-        addRemoteStream,
-        removeStream,
-        muteUnmute,
-        connectVisualizer,
-        disconnectVisualizer,
-        connectIsStreamingVolume,
-        disconnectIsStreamingVolume,
-        streamMic,
-        setStreamThreshold,
-        setStreamGain,
-      }}
-    >
-      {audioRefs.map((r, i) => (
-        <audio key={i} ref={r} autoPlay hidden={!isTest} controls muted={shouldAudioBeMuted(i)}></audio>
-      ))}
+    <Context.Provider value={streamContext}>
+      {audios}
       {children}
-    </StreamContext.Provider>
+    </Context.Provider>
   )
 }

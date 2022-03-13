@@ -1,40 +1,50 @@
-import React, { FunctionComponent, useEffect, useRef, useState } from 'react'
-import { useRecoilState, useRecoilValue } from 'recoil'
-import LoginControl from '../components/loginControl'
+import React, { FunctionComponent, useCallback, useEffect, useMemo, useState } from 'react'
 import RoomControl from '../components/roomControl'
 import { useRtcConnections } from './rtcConnectionManager'
-import { roomPeerSelect, roomState, userSelect } from '../data/atoms'
 import { useStreamContext } from './streamManager'
 import { Room, RoomPeer } from '../data/types'
-import { useSessionContext } from './sessionManager'
 import { useRouter } from 'next/router'
+import { useSignalRContext } from './signalRManager'
+import { useSessionContext } from './sessionManager'
 
 type RoomManagerContext = {
-  joinCall: () => void
-  leaveCall: () => void
+  room: Room | null
+  currUserPeer: RoomPeer | null
+  joinRoomCall: () => void
+  leaveRoomCall: () => void
 }
 
-const RoomContext = React.createContext<RoomManagerContext>({
-  joinCall: () => {},
-  leaveCall: () => {},
-})
+const Context = React.createContext<RoomManagerContext | undefined>(undefined)
 
-export const useRoomContext = () => React.useContext(RoomContext)
+export const useRoomContext = (): RoomManagerContext => {
+  const context = React.useContext(Context)
+  if (context === undefined)
+    throw new Error('useRoomContext must be used within a RoomManagerContext')
+
+  return context
+}
 
 type RoomManagerProps = {
   roomId: string
 }
 
-export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => {
+export const RoomProvider: FunctionComponent<RoomManagerProps> = ({ roomId }) => {
   const router = useRouter()
-  const { signalr } = useSessionContext()
-  const user = useRecoilValue(userSelect)
-  const [room, setRoom] = useRecoilState(roomState)
-  const roomPeer = useRecoilValue(roomPeerSelect(user?.id))
-  const roomS = useRef<Room | null>(room)
-  const roomPeerS = useRef<RoomPeer | null>(roomPeer)
+  const { user } = useSessionContext()
+  const signalR = useSignalRContext()
   const { streamMic, removeStream } = useStreamContext()
-  const rtc = useRtcConnections()
+  const { getConnection, addConnection, removeConnection, addIceCandidate, destroy } =
+    useRtcConnections()
+  const [room, setRoom] = useState<Room | null>(null)
+
+  const currUserPeer = useMemo(() => {
+    console.log('memoizing currUserPeer')
+    console.log(`user ${user?.name}`)
+    console.log(`room ${room?.name}`)
+    const currPeer = (user && room ? room.peers.find(p => p.id === user.id) : null) ?? null
+    console.log(`currPeer ${currPeer?.name}`)
+    return currPeer
+  }, [user, room])
 
   const onJoinedRoom = (user: RoomPeer, room: Room, peers: RoomPeer[]) => {
     console.log(`you joined these peers in ${user.roomId}:`)
@@ -48,141 +58,172 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
   }
 
   const onJoinRoomFailure = () => {
-    console.log(`room does not exist`)
+    console.log('room does not exist')
     router.push('/')
   }
 
-  const onPeerJoinedRoom = (peer: RoomPeer) => {
-    console.log(`peer ${peer.name} joined the room`)
-    if (roomS.current) {
-      const peers = roomS.current.peers
-      if (!peers.some(p => p.id === peer.id)) {
-        const orderedPeers = [...peers].sort(p => p.order)
-        peer.order = orderedPeers[orderedPeers.length - 1].order + 1
-        const peerUpdate = [...orderedPeers, peer]
-        setRoom({ ...roomS.current, peers: peerUpdate })
+  const onPeerJoinedRoom = useCallback(
+    (peer: RoomPeer) => {
+      console.log(`peer ${peer.name} joined the room`)
+      if (room) {
+        console.log('room.peers:')
+        console.log(room.peers)
+        if (!room.peers.some(p => p.id === peer.id)) {
+          const orderedPeers = [...room.peers].sort(p => p.order)
+          peer.order = orderedPeers[orderedPeers.length - 1].order + 1
+          const peerUpdate = [...orderedPeers, peer]
+          setRoom({ ...room, peers: peerUpdate })
+        }
       }
-    }
-  }
+    },
+    [room]
+  )
 
-  const onPeerLeftRoom = (peer: RoomPeer) => {
-    console.log(`peer ${peer.name} left the room`)
-    rtc.removeConnection(peer.id)
-    if (roomS.current) {
-      const peerUpdate = [...roomS.current.peers].filter(p => p.id !== peer.id)
-      setRoom({ ...roomS.current, peers: peerUpdate })
-    }
-  }
-
-  const setInCall = (id: string, inCall: boolean) => {
-    if (roomS.current) {
-      const peer = roomS.current.peers.find(p => p.id === id)
-      if (peer) {
-        const update: RoomPeer = { ...peer, inCall: inCall }
-        const peersUpdate = [update, ...roomS.current.peers.filter(p => p.id !== id)]
-        setRoom({ ...roomS.current!, peers: peersUpdate })
+  const onPeerLeftRoom = useCallback(
+    (peer: RoomPeer) => {
+      console.log(`peer ${peer.name} left the room`)
+      removeConnection(peer.id)
+      if (room) {
+        const peerUpdate = [...room.peers].filter(p => p.id !== peer.id)
+        setRoom({ ...room, peers: peerUpdate })
       }
-    }
-  }
+    },
+    [room]
+  )
 
-  const initConnection = (peer: RoomPeer) => {
-    const peerConnection = rtc.addConnection(peer.id, sendIceCandidate)?.conn
-    return peerConnection
-  }
+  const setInCall = useCallback(
+    (id: string, inCall: boolean) => {
+      console.log(`setincall`)
+      if (room) {
+        const peer = room.peers.find(p => p.id === id)
+        if (peer) {
+          const update: RoomPeer = { ...peer, inCall: inCall }
+          const peersUpdate = [update, ...room.peers.filter(p => p.id !== id)]
+          console.log(`update`)
+          console.log(peersUpdate)
+          setRoom({ ...room, peers: peersUpdate })
+        }
+      }
+    },
+    [room]
+  )
 
-  const onPeerJoiningCall = async (peer: RoomPeer) => {
-    if (!signalr) return
-    console.log(`${peer.name} is joining the call`)
+  const initConnection = useCallback(
+    (peer: RoomPeer) => {
+      const peerConnection = addConnection(peer.id, sendIceCandidate)?.conn
+      return peerConnection
+    },
+    [addConnection]
+  )
 
-    // if current user is in call too, then start up connection workflow
-    if (roomPeerS.current?.inCall) {
+  const onPeerJoiningCall = useCallback(
+    async (peer: RoomPeer) => {
+      console.log(`${peer.name} is joining the call`)
+      console.log(currUserPeer)
+      // if current user is in call too, then start up connection workflow
+      if (currUserPeer?.inCall) {
+        console.log(`init connection`)
+        const peerConnection = initConnection(peer)
+
+        if (peerConnection) {
+          // send the new peer an offer to connect
+          console.log(`create offer`)
+          const offer = await peerConnection.createOffer()
+          await peerConnection.setLocalDescription(offer)
+          signalR.sendOffer(peer.id, offer)
+        }
+      }
+
+      // need to highlight that the peer is in call in UI
+      setInCall(peer.id, true)
+    },
+    [user, room, initConnection, signalR]
+  )
+
+  const onPeerLeftCall = useCallback(
+    (peer: RoomPeer) => {
+      console.log(`peer ${peer.name} left the call`)
+      removeConnection(peer.id)
+      setInCall(peer.id, false)
+    },
+    [room, removeConnection, setInCall]
+  )
+
+  const onPeerChangedName = useCallback(
+    (peer: RoomPeer) => {
+      if (room) {
+        const roomPeer = room.peers.find(p => p.id === peer.id)
+        if (roomPeer) {
+          const update: RoomPeer = { ...roomPeer, name: peer.name }
+          const peersUpdate = [update, ...room.peers.filter(p => p.id !== peer.id)]
+          setRoom({ ...room, peers: peersUpdate })
+        }
+      }
+    },
+    [room]
+  )
+
+  const onOffer = useCallback(
+    async (peer: RoomPeer, offer: RTCSessionDescriptionInit) => {
+      console.log(`offer received from ${peer.id}`)
       const peerConnection = initConnection(peer)
-
       if (peerConnection) {
-        // send the new peer an offer to connect
-        const offer = await peerConnection.createOffer()
-        await peerConnection.setLocalDescription(offer)
-        signalr.sendOffer(peer.id, offer)
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(offer))
+        const answer = await peerConnection.createAnswer()
+        await peerConnection.setLocalDescription(answer)
+        signalR.sendAnswer(peer.id, answer)
       }
-    }
+    },
+    [room, signalR, initConnection]
+  )
 
-    // need to highlight that the peer is in call in UI
-    setInCall(peer.id, true)
-  }
+  const onAnswer = useCallback(
+    async (peer: RoomPeer, answer: RTCSessionDescriptionInit) => {
+      console.log(`answer received from ${peer.id}`)
+      const peerConnection = getConnection(peer.id)?.conn
+      if (peerConnection)
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(answer))
+    },
+    [getConnection]
+  )
 
-  const onPeerLeftCall = (peer: RoomPeer) => {
-    console.log(`peer ${peer.name} left the call`)
-    rtc.removeConnection(peer.id)
-    setInCall(peer.id, false)
-  }
+  const sendIceCandidate = useCallback(
+    (id: string, c: RTCIceCandidate) => {
+      signalR.sendCandidate(id, c)
+    },
+    [signalR]
+  )
 
-  const onPeerChangedName = (peer: RoomPeer) => {
-    if (roomS.current) {
-      const roomPeer = roomS.current.peers.find(p => p.id === peer.id)
-      if (roomPeer) {
-        const update: RoomPeer = { ...roomPeer, name: peer.name }
-        const peersUpdate = [update, ...roomS.current.peers.filter(p => p.id !== peer.id)]
-        setRoom({ ...roomS.current, peers: peersUpdate })
-      }
-    }
-  }
+  const onCandidate = useCallback(
+    (id: string, candidate: RTCIceCandidate) => {
+      console.log(`received candidate from ${id}`)
+      addIceCandidate(id, candidate)
+    },
+    [addIceCandidate]
+  )
 
-  const onOffer = async (peer: RoomPeer, offer: RTCSessionDescriptionInit) => {
-    if (!signalr) return
-    console.log(`offer received from ${peer.id}`)
-    const peerConnection = initConnection(peer)
-    if (peerConnection) {
-      await peerConnection.setRemoteDescription(new RTCSessionDescription(offer))
-      const answer = await peerConnection.createAnswer()
-      await peerConnection.setLocalDescription(answer)
-      signalr.sendAnswer(peer.id, answer)
-    }
-  }
-
-  const onAnswer = async (peer: RoomPeer, answer: RTCSessionDescriptionInit) => {
-    console.log(`answer received from ${peer.id}`)
-    const peerConnection = rtc.getConnection(peer.id)?.conn
-    if (peerConnection) await peerConnection.setRemoteDescription(new RTCSessionDescription(answer))
-  }
-
-  const sendIceCandidate = (id: string, c: RTCIceCandidate) => {
-    signalr?.sendCandidate(id, c)
-  }
-
-  const onCandidate = (id: string, candidate: RTCIceCandidate) => {
-    console.log(`received candidate from ${id}`)
-    rtc.addIceCandidate(id, candidate)
-  }
-
-  const joinCall = async () => {
-    if (user && roomS.current && signalr) {
+  const joinRoomCall = useCallback(async () => {
+    if (user && room) {
       console.log('you are joining the call')
       await streamMic(user.id)
-      await signalr.joinCall()
+      await signalR.joinCall()
       setInCall(user.id, true)
     }
-  }
+  }, [user, room, signalR])
 
-  const leaveCall = () => {
-    if (user && roomS.current && signalr) {
+  const leaveRoomCall = useCallback(() => {
+    if (user && room) {
       console.log('you are leaving the call')
-      rtc.destroy()
+      destroy()
       removeStream(user.id)
-      signalr.leaveCall()
+      signalR.leaveCall()
       setInCall(user.id, false)
     }
-  }
+  }, [user, room, destroy, removeStream, signalR])
 
-  const unbindSocket = () => {
-    if (!signalr) return
-    signalr.unbindRoomEvents()
-  }
-
-  const bindSocket = () => {
-    if (!signalr) return
-    unbindSocket()
-
-    signalr.bindRoomEvents({
+  const bindRoomEvents = () => {
+    signalR.unbindRoomEvents()
+    signalR.bindRoomEvents({
       onJoinedRoom,
       onJoinRoomFailure,
       onPeerJoinedRoom,
@@ -192,44 +233,62 @@ export const RoomManager: FunctionComponent<RoomManagerProps> = ({ roomId }) => 
       onPeerChangedName,
       onOffer,
       onAnswer,
-      onCandidate
+      onCandidate,
     })
   }
 
   useEffect(() => {
-    roomS.current = room
-    roomPeerS.current = room && user ? room.peers.find(p => p.id === user.id) ?? null : null
-  })
-
-  useEffect(() => {
-    bindSocket()
+    console.debug('bind room events')
+    if (signalR.isConnected()) bindRoomEvents()
 
     return () => {
-      unbindSocket()
+      console.debug('unbind room events')
+      signalR.unbindRoomEvents()
     }
-  })
+  }, [
+    signalR,
+    onJoinedRoom,
+    onJoinRoomFailure,
+    onPeerJoinedRoom,
+    onPeerJoiningCall,
+    onPeerLeftRoom,
+    onPeerLeftCall,
+    onPeerChangedName,
+    onOffer,
+    onAnswer,
+    onCandidate,
+  ])
 
   useEffect(() => {
-    if (roomId && user?.name && signalr && !roomPeer) {
+    if (roomId && !room && signalR?.isConnected() && !currUserPeer) {
       console.log('you are attempting to join room ' + roomId)
-      signalr.joinRoom(roomId)
+      signalR.joinRoom(roomId)
     }
     return () => {
       if (!roomId) {
-        rtc.destroy()
+        destroy()
       }
     }
-  }, [roomId, user?.name, signalr, roomPeer])
+  }, [roomId, room, signalR, currUserPeer])
 
-  return (
-    <RoomContext.Provider
-      value={{
-        joinCall,
-        leaveCall,
-      }}
-    >
-      {user?.name && <RoomControl />}
-      { !user?.name && <LoginControl />}
-    </RoomContext.Provider>
-  )
+  useEffect(() => {
+    console.log('latest room state:')
+    console.log(room)
+  })
+
+  const roomContext = useMemo(() => {
+    console.log('memoizing room')
+    return {
+      room,
+      currUserPeer,
+      joinRoomCall,
+      leaveRoomCall,
+    }
+  }, [room, joinRoomCall, leaveRoomCall])
+
+  return signalR.isConnected() ? (
+    <Context.Provider value={roomContext}>
+      <RoomControl />
+    </Context.Provider>
+  ) : null
 }

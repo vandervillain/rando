@@ -1,27 +1,29 @@
 import React, { CSSProperties, useEffect, useState } from 'react'
-import { useRecoilValue } from 'recoil'
-import { roomPeerSelect, streamSelect, userSelect } from '../../data/atoms'
 import { useStreamContext } from '../../contexts/streamManager'
 import DecibelControl from './decibelControl'
 import { isTest } from '../../helpers/development'
 import MicControl from './micControl'
+import { useSessionContext } from '../../contexts/sessionManager'
+import { useRoomContext } from '../../contexts/roomManager'
 
 type PeerControlProps = {
   peerId: string
 }
 
 const PeerControl = ({ peerId }: PeerControlProps) => {
-  const user = useRecoilValue(userSelect)
-  const isCurrUser = peerId === user?.id
-  const stream = useRecoilValue(streamSelect(peerId))
-  const currPeer = useRecoilValue(roomPeerSelect(user?.id))!
-  const peer = useRecoilValue(roomPeerSelect(peerId))!
+  const { user } = useSessionContext()
+  const { streams } = useStreamContext()
+  const { room, currUserPeer } = useRoomContext()
   const { connectIsStreamingVolume, disconnectIsStreamingVolume, setStreamThreshold, setStreamGain } = useStreamContext()
   const [outputting, setOutputting] = useState<boolean>(false)
 
-  if (!currPeer || !peer) return null
+  const isCurrUser = peerId === user?.id
+  const stream = streams.find(s => s.id === peerId)
+  const peer = room?.peers.find(p => p.id === peerId)
 
-  const className = () => currPeer.inCall ? 'peer-control in-call' : 'peer-control'
+  if (!user || !room || !currUserPeer || !peer) return null
+
+  const className = () => currUserPeer.inCall ? 'peer-control in-call' : 'peer-control'
   const peerDisplayName = () => (
     <>
       {peer.name} {isTest && <>({peer.id})</>}
@@ -41,7 +43,7 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
   }
 
   useEffect(() => {
-    if (peer.inCall && currPeer.inCall && stream) {
+    if (peer.inCall && currUserPeer.inCall && stream) {
       connectIsStreamingVolume(peer.id, setOutputting)
     }
     return () => {
@@ -50,6 +52,8 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
     }
   }, [peer.inCall, stream])
 
+  console.debug('<PeerControl />')
+  console.debug(peer)
   return (
     <div className={className()} data-name={peer.name} data-incall={peer.inCall} key={peer.id} style={peerStyle()}>
       <img className='avatar' src='/images/avatar.png' alt={peer.id} width='100px' height='100px' style={avatarStyle()} />

@@ -8,34 +8,36 @@ using signalr_function.Data;
 [assembly: FunctionsStartup(typeof(signalr_function.Startup))]
 namespace signalr_function
 {
-    public class Startup : FunctionsStartup
+  public class Startup : FunctionsStartup
+  {
+    public IConfiguration Configuration { get; protected set; }
+
+    public override void Configure(IFunctionsHostBuilder builder)
     {
-        public IConfiguration Configuration { get; protected set; }
+      InitializeConfiguration(builder);
 
-        public override void Configure(IFunctionsHostBuilder builder)
-        {
-            InitializeConfiguration(builder);
+      builder.Services.AddLogging();
 
-            builder.Services.AddHttpClient();
+      builder.Services.AddHttpClient();
 
-            AppSettings appSettings = Configuration.Get<AppSettings>();
-            builder.Services.AddSingleton(appSettings);
+      AppSettings appSettings = Configuration.Get<AppSettings>();
+      builder.Services.AddSingleton(appSettings);
 
-            builder.Services.AddSingleton<RoomManager>();
-        }
-
-        protected virtual void InitializeConfiguration(IFunctionsHostBuilder builder)
-        {
-            var executionContextOptions = builder
-                .Services
-                .BuildServiceProvider()
-                .GetService<IOptions<ExecutionContextOptions>>()
-                .Value;
-
-            Configuration = new ConfigurationBuilder()
-                .SetBasePath(executionContextOptions.AppDirectory)
-                .AddEnvironmentVariables()
-                .Build();
-        }
+      builder.Services.AddSingleton<RoomManager>();
     }
+
+    protected virtual void InitializeConfiguration(IFunctionsHostBuilder builder)
+    {
+      var executionContextOptions = builder
+          .Services
+          .BuildServiceProvider()
+          .GetService<IOptions<ExecutionContextOptions>>()
+          .Value;
+
+      Configuration = new ConfigurationBuilder()
+          .SetBasePath(executionContextOptions.AppDirectory)
+          .AddEnvironmentVariables()
+          .Build();
+    }
+  }
 }

@@ -1,54 +1,92 @@
-import React, { FunctionComponent, useEffect, useState } from 'react'
-import { useRecoilState } from 'recoil'
+import React, { FunctionComponent, useCallback, useEffect, useMemo, useState } from 'react'
 import LoginControl from '../components/loginControl'
-import { userState } from '../data/atoms'
-import { SignalRWrapper } from '../data/signalr'
+import { User, UserData, UserSettings } from '../data/types'
 
 type SessionContext = {
+  user: User | null
+  settings: UserSettings
   login: (name: string) => void
-  signalr: SignalRWrapper | null
+  setUserGain: (gain: number) => void
+  setUserThreshold: (threshold: number) => void
 }
 
-const AuthManagerContext = React.createContext<SessionContext>({
-  login: (name: string) => {},
-  signalr: null,
-})
+const url = process.env.NEXT_PUBLIC_SERVER
 
-export const useSessionContext = () => React.useContext(AuthManagerContext)
+const Context = React.createContext<SessionContext | undefined>(undefined)
 
-let signalr: SignalRWrapper = new SignalRWrapper()
-export const SessionManager: FunctionComponent = ({ children }) => {
-  const [userData, setUserData] = useRecoilState(userState)
-  const [socketReady, setSocketReady] = useState(signalr?.connected)
-
-  console.log('sessionManager reload')
-  console.log(`socketReady: ${socketReady}`)
-  console.log(`user: ${userData.user?.id}, ${userData.user?.name}`)
-
-  const login = async (name: string) => {
-    console.log(`logging in as ${name}`)
-    var user = await signalr.login(name)
-    setUserData({ ...userData, user })
+export const useSessionContext = (): SessionContext => {
+  const context = React.useContext(Context)
+  if (context === undefined) {
+    throw new Error('useSessionContext must be used within a SessionContext')
   }
+  return context
+}
 
+export const SessionProvider: FunctionComponent = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null)
+  const [settings, setSettings] = useState<UserSettings>({
+    threshold: 0.25,
+    gain: 0.25,
+  })
+
+  const login = useCallback(async (name: string) => {
+    if (user) return
+
+    console.log(`logging in as ${name}`)
+    const r = await fetch(`${url}/Login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        id: Math.random().toString(36).substr(2, 9),
+        name,
+      }),
+    })
+    const loggedInUser: User = await r.json()
+    setUser({
+      id: loggedInUser.id,
+      name: loggedInUser.name
+    })
+  }, [user, settings])
+
+  const setUserGain = (gain: number) => setSettings(prev => ({...prev, gain}))
+  const setUserThreshold = (threshold: number) => setSettings(prev => ({...prev, threshold}))
+
+  // on start, try fetching cached user from localStorage
   useEffect(() => {
-    if (userData.user && userData.user.id && userData.user.name)
-      signalr.connect(userData.user.id, ready => {
-        if (ready && userData.user?.name)
-          signalr.setUserName(userData.user.name)
-        setSocketReady(ready)
-      })
-  }, [userData.user?.id])
+    const cachedUserData = localStorage['userData']
+    if (cachedUserData) {
+      const userData = JSON.parse(cachedUserData) as UserData
+      if (userData && userData.user && userData.settings) {
+        setUser(userData.user)
+        setSettings(userData.settings)
+      }
+      else localStorage.removeItem('userData')
+    }
+  }, [])
+
+  // on user/settings update, save in localstorage
+  useEffect(() => {
+    const userData: UserData = {
+      user,
+      settings
+    }
+    localStorage.setItem('userData', JSON.stringify(userData))
+  }, [user, settings])
+
+  const sessionContext = useMemo(
+    (): SessionContext => ({
+      user,
+      settings,
+      login,
+      setUserGain,
+      setUserThreshold
+    }),
+    [login, user, settings]
+  )
 
   return (
-    <AuthManagerContext.Provider
-      value={{
-        login,
-        signalr,
-      }}
-    >
-      {socketReady && !userData && <LoginControl />}
-      {socketReady && userData && children}
-    </AuthManagerContext.Provider>
+    <Context.Provider value={sessionContext}>{user ? children : <LoginControl />}</Context.Provider>
   )
 }

@@ -2,7 +2,7 @@ import { useRouter } from 'next/router'
 import React from 'react'
 import { Header } from '../../components/header'
 import Layout from '../../components/layout'
-import { RoomManager } from '../../contexts/roomManager'
+import { RoomProvider } from '../../contexts/roomManager'
 
 const RoomPage = () => {
   const router = useRouter()
@@ -12,7 +12,7 @@ const RoomPage = () => {
   return roomName ? (
     <Layout>
       <Header />
-      <RoomManager roomId={roomName} />      
+      <RoomProvider roomId={roomName} />      
     </Layout>
   ) : null
 }

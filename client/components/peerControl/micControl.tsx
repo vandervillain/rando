@@ -1,6 +1,4 @@
-import { useRecoilState } from 'recoil'
 import { useStreamContext } from '../../contexts/streamManager'
-import { micTestState } from '../../data/atoms'
 import { Glyph, GlyphType } from '../glyph'
 import Colors from '../../helpers/colors'
 import { useEffect } from 'react'
@@ -13,7 +11,7 @@ type MicControlProps = {
 }
 
 const MicControl = ({ peerId, peerInCall, isCurrUser, muted }: MicControlProps) => {
-  const [testingMic, setTestingMic] = useRecoilState(micTestState)
+  const {testingMic, setTestingMic} = useStreamContext()
   const { muteUnmute } = useStreamContext()
 
   const renderMute = () => {

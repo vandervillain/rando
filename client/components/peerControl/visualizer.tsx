@@ -1,17 +1,16 @@
 import { createRef, useEffect, useState } from 'react'
-import { useRecoilValue } from 'recoil'
 import { useStreamContext } from '../../contexts/streamManager'
-import { streamSelect } from '../../data/atoms'
 
 type VisualizerProps = {
   peerId: string
 }
 
 const Visualizer = ({peerId}: VisualizerProps) => {
-  const stream = useRecoilValue(streamSelect(peerId))
+  const { streams } = useStreamContext()
   const [p, setP] = useState<number>(0)
   const streamMgr = useStreamContext()
   const visualizerRef = createRef<HTMLCanvasElement>()
+  const stream = streams.find(s => s.id === peerId)
 
   useEffect(() => {
     if (stream)

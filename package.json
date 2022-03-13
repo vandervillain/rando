@@ -10,11 +10,15 @@
     "install-dependencies:client": "cd client && yarn --frozen-lockfile",
     "build": "cd client && yarn build",
     "start": "run-p start:server start:client",
-    "start:test": "run-p start:server start:client:test",
-    "start:server": "cd server && yarn start",
+    "start:backend:local": "run-p start:storage-emulator start:signalr-emulator start:function ",
     "start:client": "cd client && yarn start",
     "start:client:test": "cd client && yarn dev:test",
     "start:client:dev": "cd client && yarn dev",
+    "start:dev": "run-p start:storage-emulator start:signalr-emulator start:function",
+    "start:storage-emulator": "azurite -d azurite.log",
+    "start:signalr-emulator": "cd signalr-function && asrs-emulator start",
+    "start:function": "cd signalr-function && func start",
+    "start:test": "run-p start:server start:client:test",
     "test": "run-p -r start:test test:e2e",
     "test:e2e": "cd client && yarn test"
   },
@@ -31,5 +35,6 @@
   "homepage": "https://github.com/vandervillain/rando#readme",
   "devDependencies": {
     "npm-run-all": "^4.1.5"
-  }
+  },
+  "dependencies": {}
 }

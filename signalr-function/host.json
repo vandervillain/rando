@@ -2,6 +2,12 @@
   "version": "2.0",
   "extensions": { "http": { "routePrefix": "" } },
   "logging": {
+    "fileLoggingMode": "always",
+    "logLevel": {
+      "default": "Warning",
+      "Host": "Error",
+      "Function": "Information"
+    },
     "applicationInsights": {
       "samplingSettings": {
         "isEnabled": true,

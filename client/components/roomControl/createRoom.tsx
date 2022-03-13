@@ -2,13 +2,15 @@ import { useRouter } from 'next/router'
 import React, { useState } from 'react'
 import { Glyph, GlyphType } from '../glyph'
 import Colors from '../../helpers/colors'
-import { useSessionContext } from '../../contexts/sessionManager'
+import { useSignalRContext } from '../../contexts/signalRManager'
 
 const CreateRoom = () => {
   const router = useRouter()
-  const { signalr } = useSessionContext()
+  const signalr = useSignalRContext()
   const [error, setError] = useState<string | null>(null)
   const roomnameRef = React.createRef<HTMLInputElement>()
+
+  console.debug('<CreateRoom />')
 
   const submit = async () => {
     const value = roomnameRef.current?.value

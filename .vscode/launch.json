@@ -5,22 +5,25 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Launch node",
+      "type": "chrome",
+      "request": "launch",
+      "name": "Debug Client",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}/client",
+      "sourceMapPathOverrides": {
+          "webpack://_N_E/*": "${webRoot}/*"
+      }
+    },
+    {
+      "name": "Debug Server",
       "type": "node",
       "request": "launch",
       "cwd": "${workspaceFolder}/server",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run-script", "start"]
-    },
-    {
-      "type": "chrome",
-      "request": "launch",
-      "name": "Debug Chrome on localhost",
-      "url": "http://localhost:3000",
-      "webRoot": "${workspaceFolder}/client",
-      "sourceMapPathOverrides": {
-        "webpack://_N_E/*": "${webRoot}/*"
-      }
+      "runtimeArgs": [
+        "run-script",
+        "start"
+      ]
     },
     {
       "name": "Debug Jest Tests",
@@ -35,6 +38,12 @@
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "port": 9229
+    },
+    {
+      "name": "Attach to .NET Functions",
+      "type": "coreclr",
+      "request": "attach",
+      "processId": "${command:azureFunctions.pickProcess}"
     }
   ]
 }

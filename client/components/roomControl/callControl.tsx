@@ -1,8 +1,8 @@
-import { useRecoilValue } from 'recoil'
 import { useStreamContext } from '../../contexts/streamManager'
-import { roomPeerSelect, streamSelect, userSelect } from '../../data/atoms'
 import { Glyph, GlyphType } from '../glyph'
 import Colors from '../../helpers/colors'
+import { useSessionContext } from '../../contexts/sessionManager'
+import { useRoomContext } from '../../contexts/roomManager'
 
 type CallControlProps = {
   joinCall: () => void
@@ -10,17 +10,16 @@ type CallControlProps = {
 }
 
 const CallControl = ({ joinCall, leaveCall }: CallControlProps) => {
-  const user = useRecoilValue(userSelect)
-  if (!user) return null
-
-  const peer = useRecoilValue(roomPeerSelect(user.id))
-  const stream = useRecoilValue(streamSelect(user.id))
-  const { muteUnmute } = useStreamContext()
-
+  const { user } = useSessionContext()
+  const { room, currUserPeer } = useRoomContext()
+  if (!user || !room || !currUserPeer) return null
+  
+  const { streams, muteUnmute } = useStreamContext()
+  const stream = streams.find(s => s.id === user.id)
   return (
     <div className='call-control'>
       <div className='call-controls'>
-        {!peer?.inCall && (
+        {!currUserPeer.inCall && (
           <Glyph
             className='join-call'
             options={{
@@ -32,7 +31,7 @@ const CallControl = ({ joinCall, leaveCall }: CallControlProps) => {
             onClick={joinCall}
           />
         )}
-        {peer?.inCall && (
+        {currUserPeer.inCall && (
           <Glyph
             className='leave-call'
             options={{
@@ -48,7 +47,7 @@ const CallControl = ({ joinCall, leaveCall }: CallControlProps) => {
         )}
       </div>
       <div className='mic-controls'>
-        {!peer?.inCall && (
+        {!currUserPeer.inCall && (
           <Glyph
             options={{
               type: GlyphType.Mic,
@@ -57,7 +56,7 @@ const CallControl = ({ joinCall, leaveCall }: CallControlProps) => {
             }}
           />
         )}
-        {peer?.inCall && stream?.muted && (
+        {currUserPeer.inCall && stream?.muted && (
           <Glyph
             className='unmute'
             options={{
@@ -71,7 +70,7 @@ const CallControl = ({ joinCall, leaveCall }: CallControlProps) => {
             onClick={() => muteUnmute(user.id, false)}
           />
         )}
-        {peer?.inCall && !stream?.muted && (
+        {currUserPeer.inCall && !stream?.muted && (
           <Glyph
             className='mute'
             options={{

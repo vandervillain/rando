@@ -1,7 +1,7 @@
 {
   "compileOnSave": true,
   "compilerOptions": {
-    "target": "es5",
+    "target": "es6",
     "module": "commonjs",
     "strict": true,
     "esModuleInterop": true,
@@ -18,14 +18,16 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
+    "incremental": true
   },
   "include": [
     "next-env.d.ts",
     "**/*.ts",
-    "**/*.tsx", 
+    "**/*.tsx",
     "server.js",
-    "pages/api/challenge.js" 
-, "data"  ],
+    "pages/api/challenge.js",
+    "data"
+  ],
   "exclude": [
     "node_modules"
   ]
