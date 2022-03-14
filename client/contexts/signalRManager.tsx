@@ -1,10 +1,11 @@
 import * as signalR from '@microsoft/signalr'
 import React, { FunctionComponent, useCallback, useEffect, useMemo, useState } from 'react'
-import { Room, RoomPeer } from '../data/types'
+import { Room, RoomPeer, User } from '../data/types'
 import { useSessionContext } from './sessionManager'
 
 type SignalRContext = {
   isConnected: () => boolean
+  connect: (user: User) => Promise<void>
   setUserName: (userName: string) => Promise<void>
   createRoom: (roomName: string) => Promise<any>
   bindRoomEvents: (e: IRoomEventHandlers) => void
@@ -43,62 +44,51 @@ export const useSignalRContext = (): SignalRContext => {
 const url = process.env.NEXT_PUBLIC_SERVER
 
 let connection: signalR.HubConnection
-let connected = false
 
 export const SignalRProvider: FunctionComponent = ({ children }) => {
-  const { user } = useSessionContext()
+  const [connected, setConnected] = useState(!!connection)
 
-  useEffect(() => {
-    if (user && !connected) {
-      console.log('try setting connection')
-      try {
-        let conn = new signalR.HubConnectionBuilder()
-          .withAutomaticReconnect()
-          .withUrl(url, {
-            headers: {
-              'x-ms-signalr-user-id': user.id,
-            },
-          })
-          .build()
+  const isConnected = useCallback(() => connected, [connected])
 
-        conn.onclose(() => {
-          console.log('signalr connection closed')
-          connected = false
+  const connect = async (user: User) => {
+    console.log(`user ${user.id} is connecting to signalr`)
+    try {
+      let conn = new signalR.HubConnectionBuilder()
+        .withAutomaticReconnect()
+        .withUrl(url, {
+          headers: {
+            'x-ms-signalr-user-id': user.id,
+          },
         })
+        .build()
 
-        conn.onreconnecting(() => {
-          console.log('signalr reconnecting')
-        })
+      conn.onclose(() => {
+        console.log('signalr connection closed')
+        setConnected(false)
+      })
 
-        conn.onreconnected(() => {
-          console.log('signalr reconnected')
-          connected = true
-        })
+      conn.onreconnecting(() => {
+        console.log('signalr reconnecting')
+      })
 
-        conn
-          .start()
-          .then(() => {
-            connected = true
-            console.info('signalr connection started at ' + url)
-            console.log(`set username to ${user.name}`)
-            conn.send('setUserName', user.name)
-          })
-          .catch(e => {
-            console.error(e)
-            console.error(`websocket connection failed to start at ${url}, retrying`)
-            conn?.stop()
-            connected = false
-          })
+      conn.onreconnected(() => {
+        console.log('signalr reconnected')
+        setConnected(true)
+      })
 
-        connection = conn
-      } catch (e) {
-        connected = false
-        console.error(e)
-      }
+      await conn.start()
+
+      setConnected(true)
+      console.info('signalr connection started at ' + url)
+      console.log(`set username to ${user.name}`)
+      conn.send('setUserName', user.name)
+
+      connection = conn
+    } catch (e) {
+      console.error(`websocket connection failed to start at ${url}`)
+      setConnected(false)
     }
-  }, [user])
-
-  const isConnected = () => connected
+  }
 
   const createRoom = useCallback(
     async (roomName: string) => {
@@ -173,7 +163,7 @@ export const SignalRProvider: FunctionComponent = ({ children }) => {
   const sendCandidate = useCallback(
     async (peerId: string, candidate: RTCIceCandidate) => {
       if (!connection || !connected) return
-      console.log(`sending candidate to ${peerId}`)
+      console.debug(`sending candidate to ${peerId}`)
       await connection.send('candidate', peerId, candidate)
     },
     [connection, connected]
@@ -203,6 +193,7 @@ export const SignalRProvider: FunctionComponent = ({ children }) => {
   const signalRContext = useMemo(
     (): SignalRContext => ({
       isConnected,
+      connect,
       setUserName,
       createRoom,
       bindRoomEvents,
@@ -216,6 +207,7 @@ export const SignalRProvider: FunctionComponent = ({ children }) => {
     }),
     [
       isConnected,
+      connect,
       setUserName,
       createRoom,
       bindRoomEvents,
@@ -229,5 +221,6 @@ export const SignalRProvider: FunctionComponent = ({ children }) => {
     ]
   )
 
+  console.debug('<SignalRManager />')
   return <Context.Provider value={signalRContext}>{children}</Context.Provider>
 }

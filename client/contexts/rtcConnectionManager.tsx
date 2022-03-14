@@ -58,7 +58,7 @@ export const RTCConnectionManager: FunctionComponent<RTCConnectionManagerProps> 
     }
 
     pc.conn.ontrack = ({ streams: [stream] }) => {
-      console.log('pc.ontrack')
+      console.log(`pc.ontrack stream ${stream.id}`)
       pc.tracksToAdd.push(stream)
       update({})
     }

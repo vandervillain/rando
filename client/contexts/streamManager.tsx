@@ -3,6 +3,7 @@ import { AnalyserFormat, LocalPeerStream, PeerStream, PeerStreamModel } from '..
 import { UserSettings } from '../data/types'
 import { isTest } from '../helpers/development'
 import { useSessionContext } from './sessionManager'
+import { useSettingsContext } from './userSettingsManager'
 
 type StreamManagerContext = {
   streams: PeerStreamModel[]
@@ -41,7 +42,8 @@ export interface AudioSource {
 let peerStreams: PeerStream[] = []
 
 export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children }) => {
-  const { user, settings, setUserGain, setUserThreshold } = useSessionContext()
+  const { user } = useSessionContext()
+  const { settings, setUserGain, setUserThreshold } = useSettingsContext()
   const [streams, setStreams] = useState<PeerStreamModel[]>([])
   const [testingMic, setTestingMic] = useState<boolean>(false)
   const audioRefs = [
@@ -115,11 +117,12 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
 
   const streamMic = async (id: string) => {
     console.log('attempting to get microphone stream')
+    const devices = await window.navigator.mediaDevices.enumerateDevices()
     const stream = await window.navigator.mediaDevices.getUserMedia({
       video: false,
       audio: true,
     })
-    console.log('obtained local stream from mic')
+    console.log(`obtained local stream from mic ${devices[0].label}`)
     addLocalStream(id, stream, settings)
   }
 
@@ -168,28 +171,13 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
       audioRefs[index!].current!.srcObject = null
     })
 
-    console.log('peerStreams indexes:')
+    console.debug('peerStreams indexes:')
     peerStreams
       .sort(p => p.index!)
       .forEach(p => {
-        console.log(`${p.index}: ${p.id}`)
+        console.debug(`${p.index}: ${p.id}`)
       })
   }, [streams.length])
-
-  const audios = useMemo(
-    () =>
-      audioRefs.map((r, i) => (
-        <audio
-          key={i}
-          ref={r}
-          autoPlay
-          hidden={!isTest}
-          controls
-          muted={shouldAudioBeMuted(i)}
-        ></audio>
-      )),
-    [streams]
-  )
 
   const streamContext = useMemo(
     () => ({
@@ -228,9 +216,19 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
     ]
   )
 
+  console.debug('<StreamManager />')
   return (
     <Context.Provider value={streamContext}>
-      {audios}
+      {audioRefs.map((r, i) => (
+        <audio
+          key={i}
+          ref={r}
+          autoPlay
+          hidden={!isTest}
+          controls
+          muted={shouldAudioBeMuted(i)}
+        ></audio>
+      ))}
       {children}
     </Context.Provider>
   )

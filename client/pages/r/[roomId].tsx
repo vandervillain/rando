@@ -9,6 +9,7 @@ const RoomPage = () => {
   const { roomId } = router.query
   const roomName = roomId as string
 
+  console.debug('<RoomPage />')
   return roomName ? (
     <Layout>
       <Header />

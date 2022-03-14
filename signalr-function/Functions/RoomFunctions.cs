@@ -74,6 +74,7 @@ namespace signalr_function.Functions
       try
       {
         var user = roomMgr.GetUserByConnId(connId);
+
         if (user != null && user.RoomId != null)
         {
           log.LogWarning($"{connId} exiting room {user.RoomId}");

@@ -8,11 +8,6 @@ export type UserSettings = {
   gain: number
 }
 
-export type UserData = {
-  user: User | null
-  settings: UserSettings
-}
-
 export interface RoomPeer {
   id: string
   socketId: string

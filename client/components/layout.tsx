@@ -5,6 +5,7 @@ import { RTCConnectionManager } from '../contexts/rtcConnectionManager'
 import { StreamProvider } from '../contexts/streamManager'
 import Colors from '../helpers/colors'
 import { SignalRProvider } from '../contexts/signalRManager'
+import { UserSettingsProvider } from '../contexts/userSettingsManager'
 
 const Layout: FunctionComponent = ({ children }) => {
   return (
@@ -14,13 +15,15 @@ const Layout: FunctionComponent = ({ children }) => {
         <link rel='icon' href='/favicon.ico' />
       </Head>
       <main>
-        <SessionProvider>
-          <SignalRProvider>
-            <StreamProvider>
-              <RTCConnectionManager>{children}</RTCConnectionManager>
-            </StreamProvider>
-          </SignalRProvider>
-        </SessionProvider>
+        <SignalRProvider>
+          <SessionProvider>
+            <UserSettingsProvider>
+              <StreamProvider>
+                <RTCConnectionManager>{children}</RTCConnectionManager>
+              </StreamProvider>
+            </UserSettingsProvider>
+          </SessionProvider>
+        </SignalRProvider>
       </main>
       <footer></footer>
 

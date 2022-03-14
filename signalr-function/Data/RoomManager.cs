@@ -140,6 +140,7 @@ namespace signalr_function.Data
       var user = activeUsers.FirstOrDefault(u => u.SocketId == connectionId);
       if (user != null)
       {
+        user.InCall = false;
         if (user.RoomId != null)
         {
           var room = activeRooms.FirstOrDefault(r => r.Id == user.RoomId);

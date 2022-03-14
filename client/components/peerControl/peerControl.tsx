@@ -53,7 +53,6 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
   }, [peer.inCall, stream])
 
   console.debug('<PeerControl />')
-  console.debug(peer)
   return (
     <div className={className()} data-name={peer.name} data-incall={peer.inCall} key={peer.id} style={peerStyle()}>
       <img className='avatar' src='/images/avatar.png' alt={peer.id} width='100px' height='100px' style={avatarStyle()} />

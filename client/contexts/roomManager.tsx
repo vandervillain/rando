@@ -38,17 +38,16 @@ export const RoomProvider: FunctionComponent<RoomManagerProps> = ({ roomId }) =>
   const [room, setRoom] = useState<Room | null>(null)
 
   const currUserPeer = useMemo(() => {
-    console.log('memoizing currUserPeer')
-    console.log(`user ${user?.name}`)
-    console.log(`room ${room?.name}`)
+    console.debug('memoizing currUserPeer')
+    console.debug(`user ${user?.name}`)
+    console.debug(`room ${room?.name}`)
     const currPeer = (user && room ? room.peers.find(p => p.id === user.id) : null) ?? null
-    console.log(`currPeer ${currPeer?.name}`)
+    console.debug(`currPeer ${currPeer?.name}`)
     return currPeer
   }, [user, room])
 
   const onJoinedRoom = (user: RoomPeer, room: Room, peers: RoomPeer[]) => {
-    console.log(`you joined these peers in ${user.roomId}:`)
-    console.log(peers.map(p => p.id).toString())
+    console.log(`you joined these peers in room ${user.roomId}: ${peers.map(p => p.id).join(',')}`)
     let order = 0
     user.order = order++
     peers.forEach(p => {
@@ -93,14 +92,12 @@ export const RoomProvider: FunctionComponent<RoomManagerProps> = ({ roomId }) =>
 
   const setInCall = useCallback(
     (id: string, inCall: boolean) => {
-      console.log(`setincall`)
+      console.debug(`setInCall user ${id} = ${inCall}`)
       if (room) {
         const peer = room.peers.find(p => p.id === id)
         if (peer) {
           const update: RoomPeer = { ...peer, inCall: inCall }
           const peersUpdate = [update, ...room.peers.filter(p => p.id !== id)]
-          console.log(`update`)
-          console.log(peersUpdate)
           setRoom({ ...room, peers: peersUpdate })
         }
       }
@@ -271,13 +268,8 @@ export const RoomProvider: FunctionComponent<RoomManagerProps> = ({ roomId }) =>
     }
   }, [roomId, room, signalR, currUserPeer])
 
-  useEffect(() => {
-    console.log('latest room state:')
-    console.log(room)
-  })
-
   const roomContext = useMemo(() => {
-    console.log('memoizing room')
+    console.debug('memoizing room')
     return {
       room,
       currUserPeer,
