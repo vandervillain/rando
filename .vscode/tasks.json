@@ -12,7 +12,7 @@
 			"type": "process",
 			"problemMatcher": "$msCompile",
 			"options": {
-				"cwd": "${workspaceFolder}/signalr-function"
+				"cwd": "${workspaceFolder}/azure-function"
 			}
 		},
 		{
@@ -31,7 +31,7 @@
 			},
 			"problemMatcher": "$msCompile",
 			"options": {
-				"cwd": "${workspaceFolder}/signalr-function"
+				"cwd": "${workspaceFolder}/azure-function"
 			}
 		},
 		{
@@ -47,7 +47,7 @@
 			"type": "process",
 			"problemMatcher": "$msCompile",
 			"options": {
-				"cwd": "${workspaceFolder}/signalr-function"
+				"cwd": "${workspaceFolder}/azure-function"
 			}
 		},
 		{
@@ -64,14 +64,14 @@
 			"dependsOn": "clean release (functions)",
 			"problemMatcher": "$msCompile",
 			"options": {
-				"cwd": "${workspaceFolder}/signalr-function"
+				"cwd": "${workspaceFolder}/azure-function"
 			}
 		},
 		{
 			"type": "func",
 			"dependsOn": "build (functions)",
 			"options": {
-				"cwd": "${workspaceFolder}/signalr-function/bin/Debug/netcoreapp3.1"
+				"cwd": "${workspaceFolder}/azure-function/bin/Debug/net6.0"
 			},
 			"command": "host start",
 			"isBackground": true,

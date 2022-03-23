@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "A WebRTC voice client for those who don't want some rando hanging around on their chat app.",
   "scripts": {
-    "docker:rebuild": "docker-compose down && docker-compose build && docker-compose up -d",
-    "docker:refresh": "docker-compose pull && docker-compose down && docker-compose up -d",
+    "docker:rebuild": "docker compose down && docker compose build && docker compose up -d",
+    "docker:refresh": "docker compose pull && docker compose down && docker compose up -d",
     "install-dependencies": "run-p install-dependencies:server install-dependencies:client",
     "install-dependencies:server": "cd server && yarn --frozen-lockfile",
     "install-dependencies:client": "cd client && yarn --frozen-lockfile",
@@ -16,8 +16,8 @@
     "start:client:dev": "cd client && yarn dev",
     "start:dev": "run-p start:storage-emulator start:signalr-emulator start:function",
     "start:storage-emulator": "azurite -d azurite.log",
-    "start:signalr-emulator": "cd signalr-function && asrs-emulator start",
-    "start:function": "cd signalr-function && func start",
+    "start:signalr-emulator": "cd azure-function && asrs-emulator start",
+    "start:function": "cd azure-function && func start",
     "start:test": "run-p start:server start:client:test",
     "test": "run-p -r start:test test:e2e",
     "test:e2e": "cd client && yarn test"

@@ -9,10 +9,10 @@ services:
     ports:
       - '3000:3000'
   signalr:
-    build: ./signalr-function
+    build: ./azure-function
     image: vandervillain/rando:signalr
     container_name: signalr
     ports:
       - '5000:5000'
     env_file:
-      - signalr-function/env.list
+      - azure-function/env.list

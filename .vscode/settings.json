@@ -7,9 +7,9 @@
   "prettier.semi": false,
   "prettier.singleQuote": true,
   "prettier.printWidth": 100,
-  "azureFunctions.deploySubpath": "signalr-function/bin/Release/netcoreapp3.1/publish",
-  "azureFunctions.projectLanguage": "C#",
-  "azureFunctions.projectRuntime": "~3",
   "debug.internalConsoleOptions": "neverOpen",
+  "azureFunctions.deploySubpath": "azure-function/bin/Release/net6.0/publish",
+  "azureFunctions.projectLanguage": "C#",
+  "azureFunctions.projectRuntime": "~4",
   "azureFunctions.preDeployTask": "publish (functions)",
 }

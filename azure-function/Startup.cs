@@ -3,10 +3,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Configuration;
-using signalr_function.Data;
+using azure_function.Data;
 
-[assembly: FunctionsStartup(typeof(signalr_function.Startup))]
-namespace signalr_function
+[assembly: FunctionsStartup(typeof(azure_function.Startup))]
+namespace azure_function
 {
   public class Startup : FunctionsStartup
   {

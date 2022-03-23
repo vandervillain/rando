@@ -46,7 +46,7 @@ export const RoomProvider: FunctionComponent<RoomManagerProps> = ({ roomId }) =>
     return currPeer
   }, [user, room])
 
-  const onJoinedRoom = (user: RoomPeer, room: Room, peers: RoomPeer[]) => {
+  const onJoinedRoom = useCallback((user: RoomPeer, room: Room, peers: RoomPeer[]) => {
     console.log(`you joined these peers in room ${user.roomId}: ${peers.map(p => p.id).join(',')}`)
     let order = 0
     user.order = order++
@@ -54,12 +54,12 @@ export const RoomProvider: FunctionComponent<RoomManagerProps> = ({ roomId }) =>
       p.order = order++
     })
     setRoom({ ...room, peers: [user, ...peers] })
-  }
+  }, [])
 
-  const onJoinRoomFailure = () => {
+  const onJoinRoomFailure = useCallback(() => {
     console.log('room does not exist')
     router.push('/')
-  }
+  }, [])
 
   const onPeerJoinedRoom = useCallback(
     (peer: RoomPeer) => {
@@ -236,7 +236,7 @@ export const RoomProvider: FunctionComponent<RoomManagerProps> = ({ roomId }) =>
 
   useEffect(() => {
     console.debug('bind room events')
-    if (signalR.isConnected()) bindRoomEvents()
+    bindRoomEvents()
 
     return () => {
       console.debug('unbind room events')
@@ -255,6 +255,46 @@ export const RoomProvider: FunctionComponent<RoomManagerProps> = ({ roomId }) =>
     onAnswer,
     onCandidate,
   ])
+
+  useEffect(() => {
+    console.debug('signalR changed')
+  }, [signalR])
+
+  useEffect(() => {
+    console.debug('room changed')
+  }, [room])
+
+  useEffect(() => {
+    console.debug('user changed')
+  }, [user])
+
+  useEffect(() => {
+    console.debug('destroy changed')
+  }, [destroy])
+
+  useEffect(() => {
+    console.debug('removeStream changed')
+  }, [removeStream])
+
+  useEffect(() => {
+    console.debug('addIceCandidate changed')
+  }, [addIceCandidate])
+
+  useEffect(() => {
+    console.debug('getConnection changed')
+  }, [getConnection])
+
+  useEffect(() => {
+    console.debug('addConnection changed')
+  }, [addConnection])
+
+  useEffect(() => {
+    console.debug('removeConnection changed')
+  }, [removeConnection])
+
+  useEffect(() => {
+    console.debug('setInCall changed')
+  }, [setInCall])
 
   useEffect(() => {
     if (roomId && !room && signalR?.isConnected() && !currUserPeer) {

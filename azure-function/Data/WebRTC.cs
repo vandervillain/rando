@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace signalr_function.Data
+namespace azure_function.Data
 {
     public class RTCSessionDescriptionInit
     {

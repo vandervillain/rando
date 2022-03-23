@@ -6,12 +6,12 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Http.Extensions;
-using Microsoft.Azure.WebJobs.Extensions.SignalRService;
-using signalr_function.Data;
+using azure_function.Data;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
+using Microsoft.Azure.WebJobs.Extensions.SignalRService;
 
-namespace signalr_function.Functions
+namespace azure_function.Functions
 {
   public class RoomFunctions : ServerlessHub
   {

@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace signalr_function.Data
+namespace azure_function.Data
 {
   public class RoomManager
   {
