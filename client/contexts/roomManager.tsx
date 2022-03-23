@@ -257,46 +257,6 @@ export const RoomProvider: FunctionComponent<RoomManagerProps> = ({ roomId }) =>
   ])
 
   useEffect(() => {
-    console.debug('signalR changed')
-  }, [signalR])
-
-  useEffect(() => {
-    console.debug('room changed')
-  }, [room])
-
-  useEffect(() => {
-    console.debug('user changed')
-  }, [user])
-
-  useEffect(() => {
-    console.debug('destroy changed')
-  }, [destroy])
-
-  useEffect(() => {
-    console.debug('removeStream changed')
-  }, [removeStream])
-
-  useEffect(() => {
-    console.debug('addIceCandidate changed')
-  }, [addIceCandidate])
-
-  useEffect(() => {
-    console.debug('getConnection changed')
-  }, [getConnection])
-
-  useEffect(() => {
-    console.debug('addConnection changed')
-  }, [addConnection])
-
-  useEffect(() => {
-    console.debug('removeConnection changed')
-  }, [removeConnection])
-
-  useEffect(() => {
-    console.debug('setInCall changed')
-  }, [setInCall])
-
-  useEffect(() => {
     if (roomId && !room && signalR?.isConnected() && !currUserPeer) {
       console.log('you are attempting to join room ' + roomId)
       signalR.joinRoom(roomId)
