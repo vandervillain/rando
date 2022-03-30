@@ -1,11 +1,14 @@
 import React, { FunctionComponent, useEffect, useMemo, useState } from 'react'
-import { LocalPeerStream } from '../data/stream'
+import { PeerStream } from '../data/stream'
 import { useStreamContext } from './streamManager'
 import { getTurnConfig } from '../helpers/development'
 import { useSessionContext } from './sessionManager'
 
 type RTCConnectionManagerContext = {
-  addConnection: (id: string, sendIceCandidate: (id: string, c: RTCIceCandidate) => void) => PeerConnection | null
+  addConnection: (
+    id: string,
+    sendIceCandidate: (id: string, c: RTCIceCandidate) => void
+  ) => PeerConnection | null
   removeConnection: (id: string) => void
   getConnection: (id: string) => PeerConnection | undefined
   addIceCandidate: (id: string, c: RTCIceCandidate) => void
@@ -34,16 +37,23 @@ interface PeerConnection {
 }
 
 let rtcPeerConnections: PeerConnection[] = []
-export const RTCConnectionManager: FunctionComponent<RTCConnectionManagerProps> = ({ children }) => {
+export const RTCConnectionManager: FunctionComponent<RTCConnectionManagerProps> = ({
+  children,
+}) => {
+  console.debug('<RTCConnectionManager />')
+
   const { user } = useSessionContext()
-  const { getStream, addRemoteStream, removeStream } = useStreamContext()
-  const [, update] = useState<{}>({})
+  const { getStream, addStream, removeStream } = useStreamContext()
+  const [trackState, updateTrackState] = useState<{}>({})
 
   const rtcConfig = useMemo(() => getTurnConfig(), [])
 
   const getRtcPeerConnection = (id: string) => rtcPeerConnections.find(p => p.peerId === id)
 
-  const addRtcPeerConnection = (id: string, sendIceCandidate: (id: string, c: RTCIceCandidate) => void) => {
+  const addRtcPeerConnection = (
+    id: string,
+    sendIceCandidate: (id: string, c: RTCIceCandidate) => void
+  ) => {
     console.debug(`addRtcPeerConnection ${id}`)
     destroyRtcPeerConnection(id)
 
@@ -60,7 +70,7 @@ export const RTCConnectionManager: FunctionComponent<RTCConnectionManagerProps> 
     pc.conn.ontrack = ({ streams: [stream] }) => {
       console.log(`pc.ontrack stream ${stream.id}`)
       pc.tracksToAdd.push(stream)
-      update({})
+      updateTrackState({})
     }
 
     // Listen for local ICE candidates on the local RTCPeerConnection
@@ -90,7 +100,7 @@ export const RTCConnectionManager: FunctionComponent<RTCConnectionManagerProps> 
     }
 
     // add local stream to connection
-    const outgoingStream = getStream(user.id) as LocalPeerStream
+    const outgoingStream = getStream(user.id) as PeerStream
     if (outgoingStream?.postStream) {
       const tracks = outgoingStream.postStream.getAudioTracks()
       console.log('adding local track to outgoing stream')
@@ -125,26 +135,30 @@ export const RTCConnectionManager: FunctionComponent<RTCConnectionManagerProps> 
   useEffect(() => {
     if (!user) return
 
-    rtcPeerConnections
-      .filter(pc => pc.tracksToAdd.length > 0)
-      .forEach(pc => {
+    const tracksToAdd = rtcPeerConnections.filter(pc => pc.tracksToAdd.length > 0)
+
+    if (tracksToAdd.length) {
+      tracksToAdd.forEach(pc => {
         while (pc.tracksToAdd.length > 0) {
-          addRemoteStream(pc.peerId, pc.tracksToAdd.shift()!)
+          addStream(pc.peerId, pc.tracksToAdd.shift()!)
         }
       })
-  })
+      updateTrackState({})
+    }
+  }, [trackState])
+
+  const rtcContext = useMemo(() => {
+    console.debug('memoizing rtcContext')
+    return {
+      addConnection: addRtcPeerConnection,
+      removeConnection: destroyRtcPeerConnection,
+      getConnection: getRtcPeerConnection,
+      addIceCandidate,
+      destroy,
+    }
+  }, [trackState])
 
   return (
-    <RTCConnectionContext.Provider
-      value={{
-        addConnection: addRtcPeerConnection,
-        removeConnection: destroyRtcPeerConnection,
-        getConnection: getRtcPeerConnection,
-        addIceCandidate,
-        destroy,
-      }}
-    >
-      {children}
-    </RTCConnectionContext.Provider>
+    <RTCConnectionContext.Provider value={rtcContext}>{children}</RTCConnectionContext.Provider>
   )
 }

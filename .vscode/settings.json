@@ -2,6 +2,10 @@
   "files.exclude": {
     "**/.next": true,
   },
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[csharp]": {
+    "editor.defaultFormatter": "ms-dotnettools.csharp"
+  },
   "prettier.arrowParens": "avoid",
   "prettier.jsxSingleQuote": true,
   "prettier.semi": false,

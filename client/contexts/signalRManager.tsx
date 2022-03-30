@@ -4,7 +4,7 @@ import { Room, RoomPeer, User } from '../data/types'
 import { useSessionContext } from './sessionManager'
 
 type SignalRContext = {
-  isConnected: () => boolean
+  connected: boolean
   connect: (user: User) => Promise<void>
   setUserName: (userName: string) => Promise<void>
   createRoom: (roomName: string) => Promise<any>
@@ -46,9 +46,9 @@ const url = process.env.NEXT_PUBLIC_SERVER
 let connection: signalR.HubConnection
 
 export const SignalRProvider: FunctionComponent = ({ children }) => {
-  const [connected, setConnected] = useState(!!connection)
+  console.debug('<SignalRManager />')
 
-  const isConnected = useCallback(() => connected, [connected])
+  const [connected, setConnected] = useState(!!connection)
 
   const connect = async (user: User) => {
     console.log(`user ${user.id} is connecting to signalr`)
@@ -77,30 +77,27 @@ export const SignalRProvider: FunctionComponent = ({ children }) => {
       })
 
       await conn.start()
-
-      setConnected(true)
       console.info('signalr connection started at ' + url)
+
       console.log(`set username to ${user.name}`)
       conn.send('setUserName', user.name)
 
       connection = conn
+      setConnected(true)
     } catch (e) {
       console.error(`websocket connection failed to start at ${url}`)
       setConnected(false)
     }
   }
 
-  const createRoom = useCallback(
-    async (roomName: string) => {
-      if (!connection || !connected) return
-      console.log(`createRoom(${roomName})`)
-      return await connection.invoke('createRoom', roomName)
-    },
-    [connection, connected]
-  )
+  const createRoom = async (roomName: string) => {
+    if (!connection || !connected) return
+    console.log(`createRoom(${roomName})`)
+    return await connection.invoke('createRoom', roomName)
+  }
 
-  const unbindRoomEvents = useCallback(() => {
-    if (!connection) return
+  const unbindRoomEvents = () => {
+    if (!connected) return
 
     connection.off('joinedRoom')
     connection.off('joinRoomFailed')
@@ -112,115 +109,84 @@ export const SignalRProvider: FunctionComponent = ({ children }) => {
     connection.off('peerLeftRoom')
     connection.off('peerLeftCall')
     connection.off('peerChangedName')
-  }, [connection])
+  }
 
-  const bindRoomEvents = useCallback(
-    (e: IRoomEventHandlers) => {
-      if (!connection) return
-      unbindRoomEvents()
+  const bindRoomEvents = (e: IRoomEventHandlers) => {
+    if (!connected) return
+    unbindRoomEvents()
 
-      connection.on('joinedRoom', e.onJoinedRoom)
-      connection.on('joinRoomFailed', e.onJoinRoomFailure)
-      connection.on('peerJoiningCall', e.onPeerJoiningCall)
-      connection.on('offer', e.onOffer)
-      connection.on('answer', e.onAnswer)
-      connection.on('candidate', e.onCandidate)
-      connection.on('peerJoinedRoom', e.onPeerJoinedRoom)
-      connection.on('peerLeftRoom', e.onPeerLeftRoom)
-      connection.on('peerLeftCall', e.onPeerLeftCall)
-      connection.on('peerChangedName', e.onPeerChangedName)
-    },
-    [connection]
-  )
+    connection.on('joinedRoom', e.onJoinedRoom)
+    connection.on('joinRoomFailed', e.onJoinRoomFailure)
+    connection.on('peerJoiningCall', e.onPeerJoiningCall)
+    connection.on('offer', e.onOffer)
+    connection.on('answer', e.onAnswer)
+    connection.on('candidate', e.onCandidate)
+    connection.on('peerJoinedRoom', e.onPeerJoinedRoom)
+    connection.on('peerLeftRoom', e.onPeerLeftRoom)
+    connection.on('peerLeftCall', e.onPeerLeftCall)
+    connection.on('peerChangedName', e.onPeerChangedName)
+  }
 
-  const setUserName = useCallback(
-    async (userName: string) => {
-      if (!connection || !connected) return
-      console.log(`set username to ${userName}`)
-      await connection.send('setUserName', userName)
-    },
-    [connection, connected]
-  )
+  const setUserName = async (userName: string) => {
+    if (!connected) return
+    console.log(`set username to ${userName}`)
+    await connection.send('setUserName', userName)
+  }
 
-  const sendOffer = useCallback(
-    async (peerId: string, offer: RTCSessionDescriptionInit) => {
-      if (!connection || !connected) return
-      console.log(`sending offer to ${peerId}`)
-      await connection.send('offer', peerId, offer)
-    },
-    [connection, connected]
-  )
+  const sendOffer = async (peerId: string, offer: RTCSessionDescriptionInit) => {
+    if (!connected) return
+    console.log(`sending offer to ${peerId}`)
+    await connection.send('offer', peerId, offer)
+  }
 
-  const sendAnswer = useCallback(
-    async (peerId: string, answer: RTCSessionDescriptionInit) => {
-      if (!connection || !connected) return
-      console.log(`sending answer to ${peerId}`)
-      await connection.send('answer', peerId, answer)
-    },
-    [connection, connected]
-  )
+  const sendAnswer = async (peerId: string, answer: RTCSessionDescriptionInit) => {
+    if (!connected) return
+    console.log(`sending answer to ${peerId}`)
+    await connection.send('answer', peerId, answer)
+  }
 
-  const sendCandidate = useCallback(
-    async (peerId: string, candidate: RTCIceCandidate) => {
-      if (!connection || !connected) return
-      console.debug(`sending candidate to ${peerId}`)
-      await connection.send('candidate', peerId, candidate)
-    },
-    [connection, connected]
-  )
+  const sendCandidate = async (peerId: string, candidate: RTCIceCandidate) => {
+    if (!connected) return
+    console.debug(`sending candidate to ${peerId}`)
+    await connection.send('candidate', peerId, candidate)
+  }
 
-  const joinRoom = useCallback(
-    async (roomId: string) => {
-      if (!connection || !connected) return
-      console.log(`joining room ${roomId}`)
-      await connection.invoke('joinRoom', roomId)
-    },
-    [connection, connected]
-  )
+  const joinRoom = async (roomId: string) => {
+    if (!connected) return
+    console.log(`joining room ${roomId}`)
+    await connection.invoke('joinRoom', roomId)
+  }
 
-  const joinCall = useCallback(async () => {
-    if (!connection || !connected) return
+  const joinCall = async () => {
+    if (!connected) return
     console.log(`joining call`)
     await connection.invoke('joinCall')
-  }, [connection, connected])
+  }
 
-  const leaveCall = useCallback(async () => {
-    if (!connection || !connected) return
+  const leaveCall = async () => {
+    if (!connected) return
     console.log(`leaving call`)
     await connection.invoke('leaveCall')
-  }, [connection, connected])
+  }
 
-  const signalRContext = useMemo(
-    (): SignalRContext => ({
-      isConnected,
-      connect,
-      setUserName,
-      createRoom,
-      bindRoomEvents,
-      unbindRoomEvents,
-      sendOffer,
-      sendAnswer,
-      sendCandidate,
-      joinRoom,
-      joinCall,
-      leaveCall,
-    }),
-    [
-      isConnected,
-      connect,
-      setUserName,
-      createRoom,
-      bindRoomEvents,
-      unbindRoomEvents,
-      sendOffer,
-      sendAnswer,
-      sendCandidate,
-      joinRoom,
-      joinCall,
-      leaveCall,
-    ]
+  return (
+    <Context.Provider
+      value={{
+        connected,
+        connect,
+        setUserName,
+        createRoom,
+        bindRoomEvents,
+        unbindRoomEvents,
+        sendOffer,
+        sendAnswer,
+        sendCandidate,
+        joinRoom,
+        joinCall,
+        leaveCall,
+      }}
+    >
+      {children}
+    </Context.Provider>
   )
-
-  console.debug('<SignalRManager />')
-  return <Context.Provider value={signalRContext}>{children}</Context.Provider>
 }

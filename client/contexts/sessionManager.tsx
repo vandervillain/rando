@@ -23,6 +23,8 @@ export const useSessionContext = (): SessionContext => {
 const localStorageKey = 'rando.user'
 
 export const SessionProvider: FunctionComponent = ({ children }) => {
+  console.debug('<SessionProvider />')
+
   const signalr = useSignalRContext()
   const [user, setUser] = useState<User | null>(null)
 
@@ -54,20 +56,24 @@ export const SessionProvider: FunctionComponent = ({ children }) => {
 
   // on start, try fetching cached user from localStorage
   useEffect(() => {
+    console.debug('fetching user from localstorage')
     const cachedUserData = localStorage[localStorageKey]
     if (cachedUserData) {
       const userData = JSON.parse(cachedUserData) as User
       if (userData) {
-        console.log(userData)
+        console.debug(`fetched user ${userData.id} from localstorage`)
         setUser(userData)
-        if (!signalr.isConnected()) signalr.connect(userData)
+        if (!signalr.connected) signalr.connect(userData)
       } else localStorage.removeItem(localStorageKey)
     }
   }, [])
 
   // on user update, save in localstorage
   useEffect(() => {
-    localStorage.setItem(localStorageKey, JSON.stringify(user))
+    if (user) {
+      console.debug(`saving user ${user?.id} to localstorage`)
+      localStorage.setItem(localStorageKey, JSON.stringify(user))
+    }
   }, [user])
 
   const sessionContext = useMemo(

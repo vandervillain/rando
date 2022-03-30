@@ -1,5 +1,5 @@
 import React, { FunctionComponent, useEffect, useMemo, useState } from 'react'
-import { AnalyserFormat, LocalPeerStream, PeerStream, PeerStreamModel } from '../data/stream'
+import { AnalyserFormat, PeerStream, PeerStreamModel } from '../data/stream'
 import { UserSettings } from '../data/types'
 import { isTest } from '../helpers/development'
 import { useSessionContext } from './sessionManager'
@@ -10,7 +10,7 @@ type StreamManagerContext = {
   testingMic: boolean
   setTestingMic: (testing: boolean) => void
   getStream: (id: string) => PeerStream | undefined
-  addRemoteStream: (id: string, mediaStream: MediaStream) => void
+  addStream: (id: string, mediaStream: MediaStream, opts?: UserSettings) => void
   removeStream: (id: string) => void
   muteUnmute: (id: string, mute: boolean) => void
   connectVisualizer: (id: string, callback: (p: number) => void) => void
@@ -42,6 +42,8 @@ export interface AudioSource {
 let peerStreams: PeerStream[] = []
 
 export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children }) => {
+  console.debug('<StreamManager />')
+
   const { user } = useSessionContext()
   const { settings, setUserGain, setUserThreshold } = useSettingsContext()
   const [streams, setStreams] = useState<PeerStreamModel[]>([])
@@ -55,12 +57,9 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
   ]
 
   const getStream = (id: string) => peerStreams.find(s => s.id === id)
-  const getStreamByIndex = (i: number) => peerStreams.find(p => p.index === i)
-  const addStream = <T extends PeerStream>(
-    stream: T,
-    mediaStream: MediaStream,
-    opts?: UserSettings
-  ) => {
+  const addStream = (id: string, mediaStream: MediaStream, opts?: UserSettings) => {
+    console.debug(`addStream for ${id}`)
+    const stream = new PeerStream(id)
     stream.setStream(mediaStream, opts ?? { threshold: 0.5, gain: 0.5 })
 
     // assign an audio ref index
@@ -72,20 +71,12 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
     }
 
     if (stream.index === undefined) throw Error('should be room for another stream, but there isnt')
-    console.log(`peer ${stream.id} set to audioRef ${stream.index}`)
+    //console.log(`peer ${stream.id} set to audioRef ${stream.index}`)
 
-    stream.connect(audioRefs[stream.index])
+    //stream.connect(audioRefs[stream.index])
     peerStreams.push(stream)
 
     setStreams(peerStreams.map((s, i) => new PeerStreamModel(s)))
-  }
-  const addRemoteStream = (id: string, mediaStream: MediaStream) => {
-    console.debug(`addRemoteStream ${id}`)
-    addStream(new PeerStream(id), mediaStream)
-  }
-  const addLocalStream = (id: string, mediaStream: MediaStream, opts: UserSettings) => {
-    console.debug(`addLocalStream ${id}`)
-    addStream(new LocalPeerStream(id), mediaStream, opts)
   }
 
   const removeStream = (id: string) => {
@@ -123,7 +114,7 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
       audio: true,
     })
     console.log(`obtained local stream from mic ${devices[0].label}`)
-    addLocalStream(id, stream, settings)
+    addStream(id, stream, settings)
   }
 
   const setStreamThreshold = (id: string, p: number) => {
@@ -154,8 +145,8 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
     setStreams(peerStreams.map((s, i) => new PeerStreamModel(s)))
   }
 
-  const shouldAudioBeMuted = (index: number) => {
-    const peerStream = getStreamByIndex(index)
+  const shouldAudioBeMuted = (id: string) => {
+    const peerStream = getStream(id)
     if (peerStream) {
       const currUser = peerStream.id === user?.id
       if (currUser) return !testingMic
@@ -183,11 +174,9 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
     () => ({
       streams,
       testingMic,
-      setTestingMic: (testing: boolean) => {
-        setTestingMic(testing)
-      },
+      setTestingMic,
       getStream,
-      addRemoteStream,
+      addStream,
       removeStream,
       muteUnmute,
       connectVisualizer,
@@ -198,37 +187,26 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
       setStreamThreshold,
       setStreamGain,
     }),
-    [
-      streams,
-      testingMic,
-      setTestingMic,
-      getStream,
-      addRemoteStream,
-      removeStream,
-      muteUnmute,
-      connectVisualizer,
-      disconnectVisualizer,
-      connectIsStreamingVolume,
-      disconnectIsStreamingVolume,
-      streamMic,
-      setStreamThreshold,
-      setStreamGain,
-    ]
+    [streams, testingMic]
   )
 
-  console.debug('<StreamManager />')
+  const audios = useMemo(() => {
+    console.debug('memoizing audios')
+    return streams.map((stream, i) => (
+      <audio
+        key={i}
+        ref={ref => getStream(stream.id)?.connect(ref)}
+        autoPlay
+        hidden={!isTest}
+        controls
+        muted={shouldAudioBeMuted(stream.id)}
+      ></audio>
+    ))
+  }, [streams, testingMic])
+
   return (
     <Context.Provider value={streamContext}>
-      {audioRefs.map((r, i) => (
-        <audio
-          key={i}
-          ref={r}
-          autoPlay
-          hidden={!isTest}
-          controls
-          muted={shouldAudioBeMuted(i)}
-        ></audio>
-      ))}
+      {audios}
       {children}
     </Context.Provider>
   )

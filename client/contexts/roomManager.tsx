@@ -257,7 +257,7 @@ export const RoomProvider: FunctionComponent<RoomManagerProps> = ({ roomId }) =>
   ])
 
   useEffect(() => {
-    if (roomId && !room && signalR?.isConnected() && !currUserPeer) {
+    if (roomId && !room && signalR.connected && !currUserPeer) {
       console.log('you are attempting to join room ' + roomId)
       signalR.joinRoom(roomId)
     }
@@ -278,7 +278,7 @@ export const RoomProvider: FunctionComponent<RoomManagerProps> = ({ roomId }) =>
     }
   }, [room, joinRoomCall, leaveRoomCall])
 
-  return signalR.isConnected() ? (
+  return signalR.connected ? (
     <Context.Provider value={roomContext}>
       <RoomControl />
     </Context.Provider>
