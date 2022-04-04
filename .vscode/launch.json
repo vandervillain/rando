@@ -7,6 +7,22 @@
     {
       "type": "chrome",
       "request": "launch",
+      "name": "chrome",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}/dist",
+      "outFiles": [
+        "${workspaceFolder}/dist/**/*.js"
+      ],
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "webpack://rando-client/./*": "${workspaceFolder}/client/*",
+        "webpack:///./*": "${workspaceFolder}/src/*",
+        "webpack:///src/*": "${workspaceFolder}/src/*"
+      }
+    },
+    {
+      "type": "chrome",
+      "request": "launch",
       "name": "Debug Client",
       "url": "http://localhost:3000",
       "webRoot": "${workspaceFolder}/client",
@@ -20,10 +36,7 @@
       "request": "launch",
       "cwd": "${workspaceFolder}/server",
       "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "run-script",
-        "start"
-      ]
+      "runtimeArgs": ["run-script", "start"]
     },
     {
       "name": "Debug Jest Tests",
