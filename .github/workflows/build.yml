@@ -63,7 +63,7 @@ jobs:
     - name: yarn install, build, and test
       run: |
         yarn install:client
-        yarn build:client
+        yarn build:client:prod
     - name: 'Deploy to Azure WebApp'
       uses: azure/webapps-deploy@v2
       with:
