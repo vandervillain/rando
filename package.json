@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "A WebRTC voice client for those who don't want some rando hanging around on their chat app.",
   "scripts": {
-    "install:client": "cd client && yarn --frozen-lockfile",
-    "build:client": "cd client && yarn build",
+    "install:client": "cd client && yarn install:prod",
+    "build:client": "cd client && yarn build:prod",
     "start:storage-emulator": "azurite -d azurite.log",
     "start:signalr-emulator": "cd azure-function && asrs-emulator start",
     "start:function": "cd azure-function && func start"
