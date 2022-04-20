@@ -9,9 +9,9 @@
       "request": "launch",
       "name": "chrome",
       "url": "http://localhost:3000",
-      "webRoot": "${workspaceFolder}/dist",
+      "webRoot": "${workspaceFolder}/build",
       "outFiles": [
-        "${workspaceFolder}/dist/**/*.js"
+        "${workspaceFolder}/build/**/*.js"
       ],
       "sourceMaps": true,
       "sourceMapPathOverrides": {

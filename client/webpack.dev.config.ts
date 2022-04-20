@@ -12,7 +12,7 @@ const config: Configuration = merge(common, {
   mode: 'development',
   devtool: 'inline-source-map',
   devServer: {
-    static: path.resolve(__dirname, 'dist'),
+    static: path.resolve(__dirname, 'build'),
     port: 3000,
     historyApiFallback: {
       index: '/404',

@@ -12,7 +12,7 @@ env:
   AZURE_FUNCTIONAPP_PACKAGE_PATH: './azure-function'
   DOTNET_VERSION: '6.0.104'
   AZURE_WEBAPP_NAME: rando-client
-  AZURE_WEBAPP_PACKAGE_PATH: './client/dist'
+  AZURE_WEBAPP_PACKAGE_PATH: './client/build'
   NODE_VERSION: '16.x'
 jobs:
   build-and-deploy-func:
@@ -62,8 +62,9 @@ jobs:
         cat .env
     - name: yarn install, build, and test
       run: |
-        yarn install:client
-        yarn build:client:prod
+        yarn install
+        yarn build:prod
+      working-directory: client
     - name: 'Deploy to Azure WebApp'
       uses: azure/webapps-deploy@v2
       with:

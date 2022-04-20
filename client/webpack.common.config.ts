@@ -5,7 +5,7 @@ import HtmlWebpackPlugin from 'html-webpack-plugin'
 
 const config: Configuration = {
   output: {
-    path: path.resolve(__dirname, 'dist'),
+    path: path.resolve(__dirname, 'build'),
     publicPath: '/',
     filename: 'bundle.js',
     assetModuleFilename: 'src/assets/images/[name].[ext]',
