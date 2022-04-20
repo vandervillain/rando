@@ -49,13 +49,9 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: ${{ env.NODE_VERSION }}
-    - name: yarn install, build, and test
-      run: |
-        cd client
-        yarn install
-        yarn build
     - name: Create env file
       run: |
+        cd client
         touch .env
         echo NODE_ENV=production >> .env
         echo SIGNALR_SERVER_URL=https://rando.gg >> .env
@@ -64,6 +60,10 @@ jobs:
         echo TURN_SERVER_SERVER_USER=test >> .env
         echo TURN_SERVER_SERVER_PASS=test123 >> .env
         cat .env
+    - name: yarn install, build, and test
+      run: |
+        yarn install:client
+        yarn build:client
     - name: 'Deploy to Azure WebApp'
       uses: azure/webapps-deploy@v2
       with:
