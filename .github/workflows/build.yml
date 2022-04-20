@@ -10,7 +10,7 @@ on:
 env:
   AZURE_FUNCTIONAPP_NAME: rando-func
   AZURE_FUNCTIONAPP_PACKAGE_PATH: './azure-function'
-  DOTNET_VERSION: '2.2.402'
+  DOTNET_VERSION: '6.0.104'
   AZURE_WEBAPP_NAME: rando-client
   AZURE_WEBAPP_PACKAGE_PATH: './client/dist'
   NODE_VERSION: '16.x'
