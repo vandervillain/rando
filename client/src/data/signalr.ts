@@ -2,7 +2,7 @@ import * as signalR from '@microsoft/signalr'
 import { Room, RoomPeer, User } from './types'
 
 export class SignalRWrapper {
-  url = process.env.NEXT_PUBLIC_SERVER!
+  url = process.env.SIGNALR_SERVER_URL!
   connection: signalR.HubConnection | null = null
   connected: boolean = false
 

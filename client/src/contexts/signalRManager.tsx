@@ -41,7 +41,7 @@ export const useSignalRContext = (): SignalRContext => {
   return context
 }
 
-const url = process.env.NEXT_PUBLIC_SERVER!
+const url = process.env.SIGNALR_SERVER_URL!
 
 let connection: signalR.HubConnection
 

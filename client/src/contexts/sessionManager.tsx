@@ -8,7 +8,7 @@ type SessionContext = {
   login: (name: string) => void
 }
 
-const url = process.env.NEXT_PUBLIC_SERVER
+const url = process.env.SIGNALR_SERVER_URL
 
 const Context = React.createContext<SessionContext | undefined>(undefined)
 

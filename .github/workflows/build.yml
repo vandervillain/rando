@@ -1,3 +1,4 @@
+
 name: Publish
 on:
   push:
@@ -6,150 +7,96 @@ on:
   pull_request:
     branches:
       - master
-#   #release:
-#     #types: [published]
 env:
-  AZURE_FUNCTIONAPP_NAME: your-app-name  # set this to your application's name
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.'    # set this to the path to your web app project, defaults to the repository root
-  DOTNET_VERSION: '2.2.402'              # set this to the dotnet version to use
+  AZURE_FUNCTIONAPP_NAME: rando-func
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: './azure-function'
+  DOTNET_VERSION: '2.2.402'
+  AZURE_WEBAPP_NAME: rando-client
+  AZURE_WEBAPP_PACKAGE_PATH: './client/dist'
+  NODE_VERSION: '16.x'
 jobs:
-  test:
-    name: Test
+  build-and-deploy-func:
+    name: Build and Deploy Function
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: microsoft/playwright-github-action@v1
+    - name: 'Checkout GitHub Action'
+      uses: actions/checkout@v2
 
-      - name: Inject Server Environment Variables
-        run: echo "${{ secrets.SERVER_ENV_VARIABLES }}" > server/.env
+    - name: Setup DotNet ${{ env.DOTNET_VERSION }} Environment
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
-        with:
-          node-version: '14.16.0'
-
-      - name: Install Dependencies
-        run: yarn --frozen-lockfile && yarn install-dependencies
-
-      - name: Build
-        run: yarn build
-
-      - name: Test
-        run: yarn test
-
-      - name: Publish Artifacts
-        uses: actions/upload-artifact@v2
-        if: ${{ always() }}
-        with:
-          name: Test Results
-          path: client/tests/screenshots
-  publish:
-    name: Publish Image to Docker Hub
+    - name: 'Resolve Project Dependencies Using Dotnet'
+      shell: pwsh
+      run: |
+        pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
+        dotnet build --configuration Release --output ./output
+        popd
+    - name: 'Run Azure Functions Action'
+      uses: Azure/functions-action@v1
+      id: fa
+      with:
+        app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+        package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output'
+        publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+  build-and-deploy-client:
+    name: Build and Deploy Client
     runs-on: ubuntu-latest
-    needs: [test]
     steps:
-      - name: Check out the repo
-        uses: actions/checkout@v2
-
-      - name: Inject Server Environment Variables
-        run: echo "${{ secrets.SERVER_ENV_VARIABLES }}" > server/.env
-
-      - name: Build containers
-        run: docker-compose down && docker-compose build
-
-      - name: Login to Docker
-        run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_TOKEN }}
-
-      - name: Push to Docker
-        run: docker-compose push
-  deploy:
-    name: Deploy to DigitalOcean
-    runs-on: ubuntu-latest
-    needs: [publish]
-    steps:
-      - name: SSH into DigitalOcean, pull and dock
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{secrets.SSH_HOST}}
-          key: ${{secrets.SSH_KEY}}
-          username: ${{secrets.SSH_USERNAME}}
-          script_stop: true
-          script: |
-            docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_TOKEN }}
-            rm -rf rando
-            git clone https://github.com/vandervillain/rando.git
-            cd rando
-            echo "${{ secrets.SERVER_ENV_VARIABLES }}" > server/.env
-            yarn docker:refresh
-  # deploy-azure-function:
+    - uses: actions/checkout@v2
+    - name: Use Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+    - name: yarn install, build, and test
+      run: |
+        cd client
+        yarn install
+        yarn build
+    - name: Create env file
+      run: |
+        touch .env
+        echo NODE_ENV=production >> .env
+        echo SIGNALR_SERVER_URL=https://rando.gg >> .env
+        echo TURN_SERVER=turn:165.232.150.149:3478 >> .env
+        echo TURN_SERVER_FORCE_RELAY=false >> .env
+        echo TURN_SERVER_SERVER_USER=test >> .env
+        echo TURN_SERVER_SERVER_PASS=test123 >> .env
+        cat .env
+    - name: 'Deploy to Azure WebApp'
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+  # test:
+  #   name: Test
   #   runs-on: windows-latest
-  #   environment: dev
   #   steps:
-  #   - name: 'Checkout GitHub Action'
-  #     uses: actions/checkout@master
+  #     - uses: actions/checkout@v2
+  #     - uses: microsoft/playwright-github-action@v1
 
-  #   - name: Setup DotNet ${{ env.DOTNET_VERSION }} Environment
-  #     uses: actions/setup-dotnet@v1
-  #     with:
-  #       dotnet-version: ${{ env.DOTNET_VERSION }}
+  #     - name: Inject Server Environment Variables
+  #       run: echo "${{ secrets.SERVER_ENV_VARIABLES }}" > server/.env
 
-  #   - name: 'Resolve Project Dependencies Using Dotnet'
-  #     shell: pwsh
-  #     run: |
-  #       pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
-  #       dotnet build --configuration Release --output ./output
-  #       popd
+  #     - name: Use Node.js ${{ matrix.node-version }}
+  #       uses: actions/setup-node@v1
+  #       with:
+  #         node-version: '14.16.0'
 
-  #   - name: 'Run Azure Functions Action'
-  #     uses: Azure/functions-action@v1
-  #     id: fa
-  #     with:
-  #       app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-  #       package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output'
-  #       publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
-  jobs:
-  build:
-    runs-on: windows-latest
+  #     - name: Install Dependencies
+  #       run: yarn --frozen-lockfile && yarn install-dependencies
 
-    steps:
-      - uses: actions/checkout@v2
+  #     - name: Build
+  #       run: yarn build
 
-      - name: Set up .NET Core
-        uses: actions/setup-dotnet@v1
-        with:
-          dotnet-version: '3.1.301'
-          include-prerelease: true
+  #     - name: Test
+  #       run: yarn test
 
-      - name: Build with dotnet
-        run: dotnet build --configuration Release
-
-      - name: dotnet publish
-        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
-
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v2
-        with:
-          name: .net-app
-          path: ${{env.DOTNET_ROOT}}/myapp
-
-  deploy:
-    runs-on: windows-latest
-    needs: build
-    environment:
-      name: 'production'
-      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
-
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v2
-        with:
-          name: .net-app
-
-      - name: Deploy to Azure Web App
-        id: deploy-to-webapp
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: 'rando'
-          slot-name: 'production'
-          publish-profile: ${{ secrets.AzureAppService_PublishProfile_1234 }}
-          package: .
+  #     - name: Publish Artifacts
+  #       uses: actions/upload-artifact@v2
+  #       if: ${{ always() }}
+  #       with:
+  #         name: Test Results
+  #         path: client/tests/screenshots

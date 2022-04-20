@@ -4,7 +4,7 @@ export const getTurnConfig = (): RTCConfiguration | undefined => {
   return isDev
     ? undefined
     : {
-        iceServers: [{ urls: process.env.NEXT_PUBLIC_TURN!, username: process.env.NEXT_PUBLIC_TURN_SERVER_USER!, credential: process.env.NEXT_PUBLIC_TURN_SERVER_PASS! }],
-        iceTransportPolicy: process.env.NEXT_PUBLIC_TURN_FORCE_RELAY! ? 'relay' : 'all',
+        iceServers: [{ urls: process.env.TURN_SERVER!, username: process.env.TURN_SERVER_SERVER_USER!, credential: process.env.TURN_SERVER_SERVER_PASS! }],
+        iceTransportPolicy: process.env.TURN_SERVER_FORCE_RELAY! ? 'relay' : 'all',
       }
 }
