@@ -52,18 +52,15 @@ jobs:
       with:
         node-version: ${{ env.NODE_VERSION }}
     - name: Create env file
-      env:   
-        ENVIRONMENT_VARIABLES: |
-          NODE_ENV=production
-          SIGNALR_SERVER_URL=https://rando-func.azurewebsites.net
-          TURN_SERVER=turn:165.232.150.149:3478
-          TURN_SERVER_FORCE_RELAY=false
-          TURN_SERVER_SERVER_USER=test
-          TURN_SERVER_SERVER_PASS=test123
       run: |
         cd client
         touch .env
-        echo ${{ env.ENVIRONMENT_VARIABLES }} >> .env
+        echo NODE_ENV=production >> .env
+        echo SIGNALR_SERVER_URL=https://rando-func.azurewebsites.net >> .env
+        echo TURN_SERVER=turn:165.232.150.149:3478 >> .env
+        echo TURN_SERVER_FORCE_RELAY=false >> .env
+        echo TURN_SERVER_SERVER_USER=test >> .env
+        echo TURN_SERVER_SERVER_PASS=test123 >> .env
         cat .env
     - name: yarn install, build, and test
       run: |
