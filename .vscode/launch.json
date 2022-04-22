@@ -31,14 +31,6 @@
       }
     },
     {
-      "name": "Debug Server",
-      "type": "node",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/server",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run-script", "start"]
-    },
-    {
       "name": "Debug Jest Tests",
       "type": "node",
       "request": "launch",
@@ -51,12 +43,6 @@
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "port": 9229
-    },
-    {
-      "name": "Attach to .NET Functions",
-      "type": "coreclr",
-      "request": "attach",
-      "processId": "${command:azureFunctions.pickProcess}"
     }
   ]
 }

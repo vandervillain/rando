@@ -8,9 +8,11 @@ on:
     branches:
       - master
 env:
+  # azure function variables
   AZURE_FUNCTIONAPP_NAME: rando-func
   AZURE_FUNCTIONAPP_PACKAGE_PATH: './azure-function'
   DOTNET_VERSION: '6.0.104'
+  # react client variables
   AZURE_WEBAPP_NAME: rando-client
   AZURE_WEBAPP_PACKAGE_PATH: './client/build'
   NODE_VERSION: '16.x'
@@ -49,6 +51,20 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: ${{ env.NODE_VERSION }}
+    - name: Create env file
+      env:   
+        ENVIRONMENT_VARIABLES: |
+          NODE_ENV=production
+          SIGNALR_SERVER_URL=https://rando-func.azurewebsites.net
+          TURN_SERVER=turn:165.232.150.149:3478
+          TURN_SERVER_FORCE_RELAY=false
+          TURN_SERVER_SERVER_USER=test
+          TURN_SERVER_SERVER_PASS=test123
+      run: |
+        cd client
+        touch .env
+        echo ${{ env.ENVIRONMENT_VARIABLES }} >> .env
+        cat .env
     - name: yarn install, build, and test
       run: |
         yarn install
