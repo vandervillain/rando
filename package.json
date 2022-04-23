@@ -3,20 +3,9 @@
   "version": "1.0.0",
   "description": "A WebRTC voice client for those who don't want some rando hanging around on their chat app.",
   "scripts": {
-    "docker:rebuild": "docker-compose down && docker-compose build && docker-compose up -d",
-    "docker:refresh": "docker-compose pull && docker-compose down && docker-compose up -d",
-    "install-dependencies": "run-p install-dependencies:server install-dependencies:client",
-    "install-dependencies:server": "cd server && yarn --frozen-lockfile",
-    "install-dependencies:client": "cd client && yarn --frozen-lockfile",
-    "build": "cd client && yarn build",
-    "start": "run-p start:server start:client",
-    "start:test": "run-p start:server start:client:test",
-    "start:server": "cd server && yarn start",
-    "start:client": "cd client && yarn start",
-    "start:client:test": "cd client && yarn dev:test",
-    "start:client:dev": "cd client && yarn dev",
-    "test": "run-p -r start:test test:e2e",
-    "test:e2e": "cd client && yarn test"
+    "start:storage-emulator": "azurite -d azurite.log",
+    "start:signalr-emulator": "cd azure-function && asrs-emulator start",
+    "start:function": "cd azure-function && func start"
   },
   "repository": {
     "type": "git",
@@ -29,7 +18,5 @@
     "url": "https://github.com/vandervillain/rando/issues"
   },
   "homepage": "https://github.com/vandervillain/rando#readme",
-  "devDependencies": {
-    "npm-run-all": "^4.1.5"
-  }
+  "dependencies": {}
 }

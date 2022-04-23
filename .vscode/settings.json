@@ -2,9 +2,18 @@
   "files.exclude": {
     "**/.next": true,
   },
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[csharp]": {
+    "editor.defaultFormatter": "ms-dotnettools.csharp"
+  },
   "prettier.arrowParens": "avoid",
   "prettier.jsxSingleQuote": true,
-  "prettier.packageManager": "yarn",
   "prettier.semi": false,
-  "prettier.singleQuote": true
+  "prettier.singleQuote": true,
+  "prettier.printWidth": 100,
+  "debug.internalConsoleOptions": "neverOpen",
+  "azureFunctions.deploySubpath": "azure-function/bin/Release/net6.0/publish",
+  "azureFunctions.projectLanguage": "C#",
+  "azureFunctions.projectRuntime": "~4",
+  "azureFunctions.preDeployTask": "publish (functions)",
 }

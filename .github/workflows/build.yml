@@ -1,73 +1,105 @@
+
 name: Publish
-on: push
-  #release:
-    #types: [published]
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+    branches:
+      - master
+env:
+  # azure function variables
+  AZURE_FUNCTIONAPP_NAME: rando-func
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: './azure-function'
+  DOTNET_VERSION: '6.0.104'
+  # react client variables
+  AZURE_WEBAPP_NAME: rando-client
+  AZURE_WEBAPP_PACKAGE_PATH: './client/build'
+  NODE_VERSION: '16.x'
 jobs:
-  test:
-    name: Test
+  build-and-deploy-func:
+    name: Build and Deploy Function
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: microsoft/playwright-github-action@v1
+    - name: 'Checkout GitHub Action'
+      uses: actions/checkout@v2
 
-      - name: Inject Server Environment Variables
-        run: echo "${{ secrets.SERVER_ENV_VARIABLES }}" > server/.env
+    - name: Setup DotNet ${{ env.DOTNET_VERSION }} Environment
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
-        with:
-          node-version: '14.16.0'
-
-      - name: Install Dependencies
-        run: yarn --frozen-lockfile && yarn install-dependencies
-
-      - name: Build
-        run: yarn build
-
-      - name: Test
-        run: yarn test
-
-      - name: Publish Artifacts
-        uses: actions/upload-artifact@v2
-        if: ${{ always() }}
-        with:
-          name: Test Results
-          path: client/tests/screenshots
-  publish:
-    name: Publish Image to Docker Hub
+    - name: 'Resolve Project Dependencies Using Dotnet'
+      shell: pwsh
+      run: |
+        pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
+        dotnet build --configuration Release --output ./output
+        popd
+    - name: 'Run Azure Functions Action'
+      uses: Azure/functions-action@v1
+      id: fa
+      with:
+        app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+        package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output'
+        publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+  build-and-deploy-client:
+    name: Build and Deploy Client
     runs-on: ubuntu-latest
-    needs: [test]
     steps:
-      - name: Check out the repo
-        uses: actions/checkout@v2
+    - uses: actions/checkout@v2
+    - name: Use Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+    - name: Create env file
+      run: |
+        cd client
+        touch .env
+        echo NODE_ENV=production >> .env
+        echo SIGNALR_SERVER_URL=https://rando-func.azurewebsites.net >> .env
+        echo TURN_SERVER=turn:165.232.150.149:3478 >> .env
+        echo TURN_SERVER_FORCE_RELAY=false >> .env
+        echo TURN_SERVER_SERVER_USER=test >> .env
+        echo TURN_SERVER_SERVER_PASS=test123 >> .env
+        cat .env
+    - name: yarn install, build, and test
+      run: |
+        yarn install
+        yarn build:prod
+      working-directory: client
+    - name: 'Deploy to Azure WebApp'
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+  # test:
+  #   name: Test
+  #   runs-on: windows-latest
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - uses: microsoft/playwright-github-action@v1
 
-      - name: Inject Server Environment Variables
-        run: echo "${{ secrets.SERVER_ENV_VARIABLES }}" > server/.env
-        
-      - name: Build containers
-        run: docker-compose down && docker-compose build
+  #     - name: Inject Server Environment Variables
+  #       run: echo "${{ secrets.SERVER_ENV_VARIABLES }}" > server/.env
 
-      - name: Login to Docker
-        run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_TOKEN }}
+  #     - name: Use Node.js ${{ matrix.node-version }}
+  #       uses: actions/setup-node@v1
+  #       with:
+  #         node-version: '14.16.0'
 
-      - name: Push to Docker
-        run: docker-compose push
-  deploy:
-    name: Deploy to DigitalOcean
-    runs-on: ubuntu-latest
-    needs: [publish]
-    steps:
-      - name: SSH into DigitalOcean, pull and dock
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{secrets.SSH_HOST}}
-          key: ${{secrets.SSH_KEY}}
-          username: ${{secrets.SSH_USERNAME}}
-          script_stop: true
-          script: |
-            docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_TOKEN }}
-            rm -rf rando
-            git clone https://github.com/vandervillain/rando.git
-            cd rando
-            echo "${{ secrets.SERVER_ENV_VARIABLES }}" > server/.env
-            yarn docker:refresh
+  #     - name: Install Dependencies
+  #       run: yarn --frozen-lockfile && yarn install-dependencies
+
+  #     - name: Build
+  #       run: yarn build
+
+  #     - name: Test
+  #       run: yarn test
+
+  #     - name: Publish Artifacts
+  #       uses: actions/upload-artifact@v2
+  #       if: ${{ always() }}
+  #       with:
+  #         name: Test Results
+  #         path: client/tests/screenshots

@@ -1,2 +1,2 @@
 Rando Client App
-React/Recoil/WebRTC/Web Audio API
+React/WebRTC/Web Audio API/SignalR

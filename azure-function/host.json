@@ -1,0 +1,18 @@
+{
+  "version": "2.0",
+  "extensions": { "http": { "routePrefix": "" } },
+  "logging": {
+    "fileLoggingMode": "always",
+    "logLevel": {
+      "default": "Warning",
+      "azure_function.Functions.RoomFunctions": "Debug",
+      "azure_function.Data.RoomManager": "Debug"
+    },
+    "applicationInsights": {
+     "samplingSettings": {
+       "isEnabled": true,
+       "excludedTypes": "Request"
+     }
+    }
+  }
+}

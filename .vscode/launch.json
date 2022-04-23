@@ -5,17 +5,25 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Launch node",
-      "type": "node",
+      "type": "chrome",
       "request": "launch",
-      "cwd": "${workspaceFolder}/server",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run-script", "start"]
+      "name": "chrome",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}/build",
+      "outFiles": [
+        "${workspaceFolder}/build/**/*.js"
+      ],
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "webpack://rando-client/./*": "${workspaceFolder}/client/*",
+        "webpack:///./*": "${workspaceFolder}/src/*",
+        "webpack:///src/*": "${workspaceFolder}/src/*"
+      }
     },
     {
       "type": "chrome",
       "request": "launch",
-      "name": "Debug Chrome on localhost",
+      "name": "Debug Client",
       "url": "http://localhost:3000",
       "webRoot": "${workspaceFolder}/client",
       "sourceMapPathOverrides": {
