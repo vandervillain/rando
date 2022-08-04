@@ -14,9 +14,7 @@ const config: Configuration = merge(common, {
   devServer: {
     static: path.resolve(__dirname, 'build'),
     port: 3000,
-    historyApiFallback: {
-      index: '/404',
-    },
+    historyApiFallback: true,
     open: false,
     hot: false,
   },

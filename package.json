@@ -18,5 +18,8 @@
     "url": "https://github.com/vandervillain/rando/issues"
   },
   "homepage": "https://github.com/vandervillain/rando#readme",
-  "dependencies": {}
+  "dependencies": {},
+  "devDependencies": {
+    "azurite": "^3.18.0"
+  }
 }

@@ -1,6 +1,11 @@
 {
   "files.exclude": {
-    "**/.next": true,
+    "**/.git": true,
+    "**/node_modules": true,
+    "build": true,
+    "__*": true,
+    "**/bin": true,
+    "**/obj": true,
   },
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "[csharp]": {
@@ -15,5 +20,5 @@
   "azureFunctions.deploySubpath": "azure-function/bin/Release/net6.0/publish",
   "azureFunctions.projectLanguage": "C#",
   "azureFunctions.projectRuntime": "~4",
-  "azureFunctions.preDeployTask": "publish (functions)",
+  "azureFunctions.preDeployTask": "publish (functions)"
 }
