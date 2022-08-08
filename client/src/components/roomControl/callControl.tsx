@@ -3,7 +3,7 @@ import { useStreamContext } from '../../contexts/streamManager'
 import { Glyph, GlyphType } from '../glyph'
 import Colors from '../../helpers/colors'
 import { useSessionContext } from '../../contexts/sessionManager'
-import { useRoomContext } from '../../contexts/roomManager'
+import { useRoomContext } from '../../contexts/roomContext'
 
 type CallControlProps = {
   joinCall: () => void
@@ -13,10 +13,12 @@ type CallControlProps = {
 const CallControl = ({ joinCall, leaveCall }: CallControlProps) => {
   const { user } = useSessionContext()
   const { room, currUserPeer } = useRoomContext()
-  if (!user || !room || !currUserPeer) return null
-  
   const { streams, muteUnmute } = useStreamContext()
+  
+  if (!user || !currUserPeer) return null
+  
   const stream = streams.find(s => s.id === user.id)
+
   return (
     <div className='call-control'>
       <div className='call-controls'>

@@ -1,24 +1,25 @@
 import * as signalR from '@microsoft/signalr'
-import React, { FunctionComponent, useCallback, useEffect, useMemo, useState } from 'react'
+import React, { FunctionComponent, useEffect, useState } from 'react'
 import { Room, RoomPeer, User } from '../data/types'
-import { useSessionContext } from './sessionManager'
 
 type SignalRContext = {
-  connected: boolean
+  isConnected: () => boolean
   connect: (user: User) => Promise<void>
   setUserName: (userName: string) => Promise<void>
   createRoom: (roomName: string) => Promise<any>
-  bindRoomEvents: (e: IRoomEventHandlers) => void
-  unbindRoomEvents: () => void
-  sendOffer: (peerId: string, offer: RTCSessionDescriptionInit) => Promise<void>
-  sendAnswer: (peerId: string, offer: RTCSessionDescriptionInit) => Promise<void>
-  sendCandidate: (peerId: string, candidate: RTCIceCandidate) => Promise<void>
+  subscribeTo: (channel: SignalRChannels, callback: (...args: any[]) => any) => void
+  unsubscribeFrom: (channel: SignalRChannels, callback: (...args: any[]) => any) => void
+  // room
   joinRoom: (roomId: string) => void
   joinCall: () => void
   leaveCall: () => void
+  // rtc
+  sendOffer: (peerId: string, offer: RTCSessionDescriptionInit) => Promise<void>
+  sendAnswer: (peerId: string, offer: RTCSessionDescriptionInit) => Promise<void>
+  sendCandidate: (peerId: string, candidate: RTCIceCandidate) => Promise<void>
 }
 
-export interface IRoomEventHandlers {
+export type RoomEventHandlers = {
   onJoinedRoom: (user: RoomPeer, room: Room, peers: RoomPeer[]) => void
   onJoinRoomFailure: () => void
   onPeerJoinedRoom: (peer: RoomPeer) => void
@@ -26,9 +27,6 @@ export interface IRoomEventHandlers {
   onPeerLeftRoom: (peer: RoomPeer) => void
   onPeerLeftCall: (peer: RoomPeer) => void
   onPeerChangedName: (peer: RoomPeer) => void
-  onOffer: (peer: RoomPeer, offer: RTCSessionDescriptionInit) => Promise<void>
-  onAnswer: (peer: RoomPeer, answer: RTCSessionDescriptionInit) => Promise<void>
-  onCandidate: (id: string, candidate: RTCIceCandidate) => void
 }
 
 const Context = React.createContext<SignalRContext | undefined>(undefined)
@@ -45,10 +43,24 @@ const url = process.env.SIGNALR_SERVER_URL!
 
 let connection: signalR.HubConnection
 
+export type SignalRChannels =
+  | 'joinedRoom'
+  | 'joinRoomFailed'
+  | 'initialPeers'
+  | 'peerJoiningCall'
+  | 'offer'
+  | 'answer'
+  | 'candidate'
+  | 'peerJoinedRoom'
+  | 'peerLeftRoom'
+  | 'peerLeftCall'
+  | 'peerChangedName'
+
 export const SignalRProvider: FunctionComponent = ({ children }) => {
   console.debug('<SignalRManager />')
+  const [initialized, setInitialized] = useState<boolean>(false)
 
-  const [connected, setConnected] = useState(!!connection)
+  const isConnected = () => connection && connection.state === signalR.HubConnectionState.Connected
 
   const connect = async (user: User) => {
     console.log(`user ${user.id} is connecting to signalr`)
@@ -64,7 +76,6 @@ export const SignalRProvider: FunctionComponent = ({ children }) => {
 
       conn.onclose(() => {
         console.log('signalr connection closed')
-        setConnected(false)
       })
 
       conn.onreconnecting(() => {
@@ -73,7 +84,6 @@ export const SignalRProvider: FunctionComponent = ({ children }) => {
 
       conn.onreconnected(() => {
         console.log('signalr reconnected')
-        setConnected(true)
       })
 
       await conn.start()
@@ -83,101 +93,99 @@ export const SignalRProvider: FunctionComponent = ({ children }) => {
       conn.send('setUserName', user.name)
 
       connection = conn
-      setConnected(true)
+      setInitialized(true)
     } catch (e) {
       console.error(`websocket connection failed to start at ${url}`)
-      setConnected(false)
     }
   }
 
   const createRoom = async (roomName: string) => {
-    if (!connection || !connected) return
+    if (!isConnected) return
     console.log(`createRoom(${roomName})`)
     return await connection.invoke('createRoom', roomName)
   }
 
-  const unbindRoomEvents = () => {
-    if (!connected) return
+  // SUBSCRIPTIONS
 
-    connection.off('joinedRoom')
-    connection.off('joinRoomFailed')
-    connection.off('peerJoiningCall')
-    connection.off('offer')
-    connection.off('answer')
-    connection.off('candidate')
-    connection.off('peerJoinedRoom')
-    connection.off('peerLeftRoom')
-    connection.off('peerLeftCall')
-    connection.off('peerChangedName')
+  const subscribeTo = (sub: SignalRChannels, callback: (...args: any[]) => any) => {
+    if (!isConnected()) {
+      console.warn(`tried to subscribe to ${sub} while signalr is not connected`)
+      return
+    }
+    console.debug(`subscribeTo ${sub}`)
+    connection.on(sub, callback)
   }
 
-  const bindRoomEvents = (e: IRoomEventHandlers) => {
-    if (!connected) return
-    unbindRoomEvents()
-
-    connection.on('joinedRoom', e.onJoinedRoom)
-    connection.on('joinRoomFailed', e.onJoinRoomFailure)
-    connection.on('peerJoiningCall', e.onPeerJoiningCall)
-    connection.on('offer', e.onOffer)
-    connection.on('answer', e.onAnswer)
-    connection.on('candidate', e.onCandidate)
-    connection.on('peerJoinedRoom', e.onPeerJoinedRoom)
-    connection.on('peerLeftRoom', e.onPeerLeftRoom)
-    connection.on('peerLeftCall', e.onPeerLeftCall)
-    connection.on('peerChangedName', e.onPeerChangedName)
+  const unsubscribeFrom = (sub: SignalRChannels, callback: (...args: any[]) => any) => {
+    if (!isConnected()) {
+      console.warn(`tried to unsubscribe from ${sub} while signalr is not connected`)
+      return
+    }
+    console.debug(`unsubscribeFrom ${sub}`)
+    connection.off(sub, callback)
   }
+
+  // ROOM EVENTS
 
   const setUserName = async (userName: string) => {
-    if (!connected) return
+    if (!isConnected()) return
     console.log(`set username to ${userName}`)
     await connection.send('setUserName', userName)
   }
 
-  const sendOffer = async (peerId: string, offer: RTCSessionDescriptionInit) => {
-    if (!connected) return
-    console.log(`sending offer to ${peerId}`)
-    await connection.send('offer', peerId, offer)
-  }
-
-  const sendAnswer = async (peerId: string, answer: RTCSessionDescriptionInit) => {
-    if (!connected) return
-    console.log(`sending answer to ${peerId}`)
-    await connection.send('answer', peerId, answer)
-  }
-
-  const sendCandidate = async (peerId: string, candidate: RTCIceCandidate) => {
-    if (!connected) return
-    console.debug(`sending candidate to ${peerId}`)
-    await connection.send('candidate', peerId, candidate)
-  }
-
   const joinRoom = async (roomId: string) => {
-    if (!connected) return
+    if (!isConnected()) return
     console.log(`joining room ${roomId}`)
     await connection.invoke('joinRoom', roomId)
   }
 
   const joinCall = async () => {
-    if (!connected) return
+    if (!isConnected()) return
     console.log(`joining call`)
     await connection.invoke('joinCall')
   }
 
   const leaveCall = async () => {
-    if (!connected) return
+    if (!isConnected()) return
     console.log(`leaving call`)
     await connection.invoke('leaveCall')
   }
 
+  const sendOffer = async (peerId: string, offer: RTCSessionDescriptionInit) => {
+    if (!isConnected()) return
+    console.log(`sending offer to ${peerId}`)
+    await connection.send('offer', peerId, offer)
+  }
+
+  const sendAnswer = async (peerId: string, answer: RTCSessionDescriptionInit) => {
+    if (!isConnected()) return
+    console.log(`sending answer to ${peerId}`)
+    await connection.send('answer', peerId, answer)
+  }
+
+  const sendCandidate = async (peerId: string, candidate: RTCIceCandidate) => {
+    if (!isConnected()) return
+    console.debug(`sending candidate to ${peerId}`)
+    await connection.send('candidate', peerId, candidate)
+  }
+
+  useEffect(() => {
+    console.debug('signalRManager mount')
+
+    return () => {
+      console.debug('signalRManager unmount')
+    }
+  })
+
   return (
     <Context.Provider
       value={{
-        connected,
+        isConnected,
         connect,
         setUserName,
         createRoom,
-        bindRoomEvents,
-        unbindRoomEvents,
+        subscribeTo,
+        unsubscribeFrom,
         sendOffer,
         sendAnswer,
         sendCandidate,

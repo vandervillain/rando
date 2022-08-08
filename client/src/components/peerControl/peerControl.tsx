@@ -4,7 +4,7 @@ import DecibelControl from './decibelControl'
 import { isTest } from '../../helpers/development'
 import MicControl from './micControl'
 import { useSessionContext } from '../../contexts/sessionManager'
-import { useRoomContext } from '../../contexts/roomManager'
+import { useRoomContext } from '../../contexts/roomContext'
 import Avatar from '../../assets/images/avatar.png'
 
 type PeerControlProps = {
@@ -14,17 +14,22 @@ type PeerControlProps = {
 const PeerControl = ({ peerId }: PeerControlProps) => {
   const { user } = useSessionContext()
   const { streams } = useStreamContext()
-  const { room, currUserPeer } = useRoomContext()
-  const { connectIsStreamingVolume, disconnectIsStreamingVolume, setStreamThreshold, setStreamGain } = useStreamContext()
+  const { room, peers, currUserPeer } = useRoomContext()
+  const {
+    connectIsStreamingVolume,
+    disconnectIsStreamingVolume,
+    setStreamThreshold,
+    setStreamGain,
+  } = useStreamContext()
   const [outputting, setOutputting] = useState<boolean>(false)
 
   const isCurrUser = peerId === user?.id
   const stream = streams.find(s => s.id === peerId)
-  const peer = room?.peers.find(p => p.id === peerId)
+  const peer = peers.find(p => p.id === peerId)
 
   if (!user || !room || !currUserPeer || !peer) return null
 
-  const className = () => currUserPeer.inCall ? 'peer-control in-call' : 'peer-control'
+  const className = () => (currUserPeer.inCall ? 'peer-control in-call' : 'peer-control')
   const peerDisplayName = () => (
     <>
       {peer.name} {isTest && <>({peer.id})</>}
@@ -53,24 +58,46 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
     }
   }, [peer.inCall, stream])
 
-  console.debug('<PeerControl />')
+  console.debug(`<PeerControl peerId=${peerId} />`)
+  console.debug(`gain = ${stream?.gain}`)
+  console.log(streams)
   return (
-    <div className={className()} data-name={peer.name} data-incall={peer.inCall} key={peer.id} style={peerStyle()}>
-      <img className='avatar' src={Avatar} alt={peer.id} width='100px' height='100px' style={avatarStyle()} />
+    <div
+      className={className()}
+      data-name={peer.name}
+      data-incall={peer.inCall}
+      key={peer.id}
+      style={peerStyle()}
+    >
+      <img
+        className='avatar'
+        src={Avatar}
+        alt={peer.id}
+        width='100px'
+        height='100px'
+        style={avatarStyle()}
+      />
       <div className='username'>{peerDisplayName()}</div>
-      <div className='decibels'>
-        <DecibelControl
-          peerId={peer.id}
-          inCall={peer.inCall}
-          threshold={stream?.threshold ?? 0}
-          setThreshold={p => setStreamThreshold(peer.id, p)}
-          gain={stream?.gain ?? 0}
-          setGain={p => setStreamGain(peer.id, p)}
-        />
-      </div>
-      <div className='controls'>
-        <MicControl peerId={peer.id} peerInCall={peer.inCall} isCurrUser={isCurrUser} muted={stream?.muted} />
-      </div>
+      {peer.inCall && (
+        <>
+          <div className='decibels'>
+            <DecibelControl
+              peerId={peer.id}
+              threshold={stream?.threshold ?? 0}
+              setThreshold={p => setStreamThreshold(peer.id, p)}
+              gain={stream?.gain ?? 0}
+              setGain={p => setStreamGain(peer.id, p)}
+            />
+          </div>
+          <div className='controls'>
+            <MicControl
+              peerId={peer.id}
+              isCurrUser={isCurrUser}
+              muted={stream?.muted}
+            />
+          </div>
+        </>
+      )}
       <style>{`
         .peer-control {
           min-width: 300px;
@@ -84,7 +111,6 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
           background-color: #444;
           padding: 10px;
           margin: 10px;
-          border-radius: 60px 60px 60px 60px;
           transition: min-width 0.3s;
         }
 

@@ -164,7 +164,8 @@ namespace azure_function.Functions
                 if (user != null)
                 {
                     await Groups.AddToGroupAsync(context.ConnectionId, roomId);
-                    await ToClient(context.ConnectionId, ClientEvent.joinedRoom, user, room, usersInRoom);
+                    await ToClient(context.ConnectionId, ClientEvent.joinedRoom, room);
+                    await ToClient(context.ConnectionId, ClientEvent.initialPeers, user, usersInRoom);
                     await ToPeers(user, ClientEvent.peerJoinedRoom, user);
                 }
             }
@@ -217,7 +218,7 @@ namespace azure_function.Functions
                 else
                 {
                     log.LogInformation($"user {user.Id} sending an offer to peer {peer.Id}");
-                    await ToClient(peer.SocketId, ClientEvent.offer, user, offer);
+                    await ToClient(peer.SocketId, ClientEvent.offer, user.Id, offer);
                 }
             }
         }
@@ -237,7 +238,7 @@ namespace azure_function.Functions
                 else
                 {
                     log.LogInformation($"user {user.Id} sending an answer to peer {peer.Id}");
-                    await ToClient(peer.SocketId, ClientEvent.answer, user, answer);
+                    await ToClient(peer.SocketId, ClientEvent.answer, user.Id, answer);
                 }
             }
         }
@@ -268,6 +269,7 @@ namespace azure_function.Functions
             createdRoom,
             joinedRoom,
             joinedRoomFailed,
+            initialPeers,
             peerJoinedRoom,
             peerLeftRoom,
             peerJoiningCall,

@@ -1,23 +1,23 @@
 import React from 'react'
-import { useRoomContext } from '../../contexts/roomManager'
 import CallControl from './callControl'
 import PeerList from '../peerList'
+import { useRoomContext } from '../../contexts/roomContext'
 
-const RoomControl = () => {
-  const {room, joinRoomCall, leaveRoomCall } = useRoomContext()
+type RoomControlProps = {
+  joinCall: () => void
+  leaveCall: () => void
+}
 
+const RoomControl = ({ joinCall, leaveCall }: RoomControlProps) => {
   console.debug('<RoomControl />')
-  console.debug(room)
+  const { room } = useRoomContext()
   return (
     <div className='room'>
       {room && (
         <>
           <h2>{room.name}</h2>
           <PeerList />
-          <CallControl
-            joinCall={joinRoomCall}
-            leaveCall={leaveRoomCall}
-          />
+          <CallControl joinCall={joinCall} leaveCall={leaveCall} />
         </>
       )}
     </div>

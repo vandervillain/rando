@@ -1,12 +1,11 @@
 import React from 'react'
-import { useRoomContext } from '../../contexts/roomManager'
+import { useRoomContext } from '../../contexts/roomContext'
 import { useSessionContext } from '../../contexts/sessionManager'
 import Dragbar from './dragbar'
 import Visualizer from './visualizer'
 
 type DecibelControlProps = {
   peerId: string
-  inCall: boolean
   threshold: number
   gain: number
   setThreshold: (p: number) => void
@@ -15,7 +14,6 @@ type DecibelControlProps = {
 
 const DecibelControl = ({
   peerId,
-  inCall,
   threshold,
   gain,
   setThreshold,
@@ -26,18 +24,14 @@ const DecibelControl = ({
 
   return (
     <div className='decibel-control'>
-      {inCall && currUserPeer?.inCall && (
+      {currUserPeer?.inCall && (
         <>
           <Visualizer peerId={peerId} />
           {peerId === user?.id && (
-            <Dragbar
-              className='threshold'
-              initialValue={threshold}
-              onChange={p => setThreshold(p)}
-            />
+            <Dragbar className='threshold' value={threshold} onChange={p => setThreshold(p)} />
           )}
           <br />
-          <Dragbar className='gain' initialValue={gain} onChange={p => setGain(p)} />
+          <Dragbar className='gain' value={gain} onChange={p => setGain(p)} />
         </>
       )}
     </div>

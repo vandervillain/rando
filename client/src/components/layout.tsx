@@ -1,6 +1,5 @@
 import React, { FunctionComponent } from 'react'
 import { SessionProvider } from '../contexts/sessionManager'
-import { RTCConnectionManager } from '../contexts/rtcConnectionManager'
 import { StreamProvider } from '../contexts/streamManager'
 import Colors from '../helpers/colors'
 import { SignalRProvider } from '../contexts/signalRManager'
@@ -12,11 +11,7 @@ const Layout: FunctionComponent = ({ children }) => {
       <main>
         <SignalRProvider>
           <SessionProvider>
-            <UserSettingsProvider>
-              <StreamProvider>
-                <RTCConnectionManager>{children}</RTCConnectionManager>
-              </StreamProvider>
-            </UserSettingsProvider>
+            <StreamProvider>{children}</StreamProvider>
           </SessionProvider>
         </SignalRProvider>
       </main>

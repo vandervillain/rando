@@ -6,17 +6,16 @@ import { useEffect } from 'react'
 
 type MicControlProps = {
   peerId: string
-  peerInCall: boolean
   isCurrUser: boolean
   muted: boolean | undefined
 }
 
-const MicControl = ({ peerId, peerInCall, isCurrUser, muted }: MicControlProps) => {
-  const {testingMic, setTestingMic} = useStreamContext()
+const MicControl = ({ peerId, isCurrUser, muted }: MicControlProps) => {
+  const { testingMic, setTestingMic } = useStreamContext()
   const { muteUnmute } = useStreamContext()
 
   const renderMute = () => {
-    if (!peerInCall || isCurrUser || muted === undefined) return null
+    if (isCurrUser || muted === undefined) return null
     if (muted)
       return (
         <Glyph
@@ -52,7 +51,7 @@ const MicControl = ({ peerId, peerInCall, isCurrUser, muted }: MicControlProps) 
   }
 
   const renderTest = () => {
-    if (!isCurrUser || !peerInCall) return null
+    if (!isCurrUser) return null
     if (testingMic)
       return (
         <Glyph
@@ -83,14 +82,6 @@ const MicControl = ({ peerId, peerInCall, isCurrUser, muted }: MicControlProps) 
         />
       )
   }
-
-  useEffect(() => {
-    return () => {
-      if (!peerInCall && testingMic) {
-        setTestingMic(false)
-      }
-    }
-  }, [peerInCall])
 
   return (
     <div className='mic-control'>

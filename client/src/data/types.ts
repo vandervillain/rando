@@ -20,6 +20,4 @@ export interface RoomPeer {
 export type Room = {
   id: string
   name: string
-  /** not on server */
-  peers: RoomPeer[]
 }

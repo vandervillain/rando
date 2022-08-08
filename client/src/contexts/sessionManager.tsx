@@ -2,6 +2,7 @@ import React, { FunctionComponent, useCallback, useEffect, useMemo, useState } f
 import LoginControl from '../components/loginControl'
 import { User } from '../data/types'
 import { useSignalRContext } from './signalRManager'
+import { UserSettingsProvider } from './userSettingsManager'
 
 type SessionContext = {
   user: User | null
@@ -25,7 +26,7 @@ const localStorageKey = 'rando.user'
 export const SessionProvider: FunctionComponent = ({ children }) => {
   console.debug('<SessionProvider />')
 
-  const signalr = useSignalRContext()
+  const signalR = useSignalRContext()
   const [user, setUser] = useState<User | null>(null)
 
   const login = useCallback(
@@ -44,7 +45,7 @@ export const SessionProvider: FunctionComponent = ({ children }) => {
         }),
       })
       const loggedInUser: User = await r.json()
-      await signalr.connect(loggedInUser)
+      await signalR.connect(loggedInUser)
 
       setUser({
         id: loggedInUser.id,
@@ -63,7 +64,7 @@ export const SessionProvider: FunctionComponent = ({ children }) => {
       if (userData) {
         console.debug(`fetched user ${userData.id} from localstorage`)
         setUser(userData)
-        if (!signalr.connected) signalr.connect(userData)
+        if (!signalR.isConnected()) signalR.connect(userData)
       } else localStorage.removeItem(localStorageKey)
     }
   }, [])
@@ -84,7 +85,12 @@ export const SessionProvider: FunctionComponent = ({ children }) => {
     [login, user]
   )
 
-  return (
-    <Context.Provider value={sessionContext}>{user ? children : <LoginControl />}</Context.Provider>
-  )
+  const conditionalRender = (children: React.ReactNode) => {
+    if (!user) return <LoginControl />
+    if (!signalR.isConnected()) return <div>connecting...</div>
+
+    return <UserSettingsProvider>{children}</UserSettingsProvider>
+  }
+
+  return <Context.Provider value={sessionContext}>{conditionalRender(children)}</Context.Provider>
 }

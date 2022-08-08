@@ -86,51 +86,58 @@ export class PeerStream {
 
   isEnabled = () => this.preStream?.getAudioTracks()[0].enabled
 
-  setStream = (stream: MediaStream, options: StreamOptions) => {
-    this.preStream = stream
-    this.gain = options.gain
-    this.gainNode.gain.value = options.gain * this.maxGain
-    this.thresholdAnalyser.setThreshold(options.threshold)
-  }
-
   toggleStream = (enable: boolean) => {
     if (this.preStream) this.preStream.getAudioTracks()[0].enabled = enable
   }
 
-  connect = (audioRef: HTMLAudioElement | null) => {
-    if (!audioRef) return
-    else if (this.isConnected && this.postStream) audioRef.srcObject = this.postStream
-    else if (!this.isConnected && this.preStream) {
-      // chrome has a bug where in order to connect a WebRTC media stream to nodes
-      // it needs to first be attached to an <audio> element that is playing
-      const chromeAudioFix = new Audio()
-      chromeAudioFix.srcObject = this.preStream
-      chromeAudioFix.play()
-      chromeAudioFix.muted = true
-
-      chromeAudioFix.onloadedmetadata = () => {
-        const source = this.audioCtx.createMediaStreamSource(
-          chromeAudioFix.srcObject as MediaStream
-        )
-        const destination = this.audioCtx.createMediaStreamDestination()
-
-        source
-          .connect(this.gainNode)
-          .connect(this.analyser.node)
-          .connect(this.thresholdAnalyser.node) // user variable minDecibels
-          .connect(this.muteNode) // mutes output based on if it makes it through threshold
-          .connect(destination)
-
-        this.applyDynamicThreshold()
-
-        this.postStream = destination.stream
-        audioRef.srcObject = this.postStream
-      }
-
-      this.isConnected = true
-      console.log(`connected stream from ${this.id} to an audio element`)
-    }
+  initializePreStream = (stream: MediaStream, options: StreamOptions) => {
+    this.preStream = stream
+    this.gain = options.gain
+    this.gainNode.gain.value = options.gain * this.maxGain
+    this.thresholdAnalyser.setThreshold(options.threshold)
+    console.debug(`initialized pre stream for ${this.id}`)
   }
+
+  initializePostStream = () =>
+    new Promise<MediaStream>(resolve => {
+      if (!this.isConnected && this.preStream) {
+        // chrome has a bug where in order to connect a WebRTC media stream to nodes
+        // it needs to first be attached to an <audio> element that is playing
+        const chromeAudioFix = new Audio()
+        chromeAudioFix.srcObject = this.preStream
+        chromeAudioFix.play()
+        chromeAudioFix.muted = true
+
+        chromeAudioFix.onloadedmetadata = () => {
+          const source = this.audioCtx.createMediaStreamSource(
+            chromeAudioFix.srcObject as MediaStream
+          )
+          const destination = this.audioCtx.createMediaStreamDestination()
+
+          source
+            .connect(this.gainNode)
+            .connect(this.analyser.node)
+            .connect(this.thresholdAnalyser.node) // user variable minDecibels
+            .connect(this.muteNode) // mutes output based on if it makes it through threshold
+            .connect(destination)
+
+          this.applyDynamicThreshold()
+
+          this.postStream = destination.stream
+          this.isConnected = true
+          console.debug(`initialized post stream for ${this.id}`)
+          resolve(this.postStream!)
+        }
+      }
+    })
+
+  attach = (audioRef: HTMLAudioElement | null) => {
+    if (!audioRef || !this.isConnected || !this.postStream) return
+
+    audioRef.srcObject = this.postStream
+    console.log(`connected stream from ${this.id} to an audio element`)
+  }
+
   disconnect = () => {
     this.preStream?.getAudioTracks()[0].stop()
     this.postStream?.getAudioTracks()[0].stop()

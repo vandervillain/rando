@@ -1,17 +1,21 @@
-import React, { FunctionComponent, useEffect, useMemo, useState } from 'react'
+import React, { FunctionComponent, useCallback, useEffect, useMemo, useState } from 'react'
 import { AnalyserFormat, PeerStream, PeerStreamModel } from '../data/stream'
 import { UserSettings } from '../data/types'
 import { isTest } from '../helpers/development'
+import useWebRTC from '../hooks/useWebRTC'
 import { useSessionContext } from './sessionManager'
+import { useSignalRContext } from './signalRManager'
 import { useSettingsContext } from './userSettingsManager'
 
 type StreamManagerContext = {
   streams: PeerStreamModel[]
   testingMic: boolean
   setTestingMic: (testing: boolean) => void
+  requestStream: (peerId: string) => Promise<void>
   getStream: (id: string) => PeerStream | undefined
   addStream: (id: string, mediaStream: MediaStream, opts?: UserSettings) => void
   removeStream: (id: string) => void
+  destroyStreams: () => void
   muteUnmute: (id: string, mute: boolean) => void
   connectVisualizer: (id: string, callback: (p: number) => void) => void
   disconnectVisualizer: (id: string) => void
@@ -45,9 +49,16 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
   console.debug('<StreamManager />')
 
   const { user } = useSessionContext()
+  const signalR = useSignalRContext()
+  const webRTC = useWebRTC(signalR, (id, stream) => {
+    addStream(id, stream)
+  })
+
   const { settings, setUserGain, setUserThreshold } = useSettingsContext()
   const [streams, setStreams] = useState<PeerStreamModel[]>([])
   const [testingMic, setTestingMic] = useState<boolean>(false)
+  const [device, setDevice] = useState<MediaDeviceInfo>()
+
   const audioRefs = [
     React.createRef<HTMLAudioElement>(),
     React.createRef<HTMLAudioElement>(),
@@ -56,11 +67,44 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
     React.createRef<HTMLAudioElement>(),
   ]
 
+  const getMediaDevices = useCallback(
+    async () => await navigator.mediaDevices.enumerateDevices(),
+    []
+  )
+
+  const setMediaDevice = useCallback((device: MediaDeviceInfo) => {
+    setDevice(device)
+    obtainMicStream()
+  }, [])
+
+  const obtainMicStream = useCallback(async () => {
+    console.log('attempting to get microphone stream')
+    const devices = await getMediaDevices()
+    const constraints: MediaStreamConstraints = {
+      video: false,
+      audio: device
+        ? {
+            deviceId: { exact: device.deviceId },
+          }
+        : true,
+    }
+    const stream = await window.navigator.mediaDevices.getUserMedia(constraints)
+    console.log(`obtained local stream from mic ${device ? device.label : devices[0].label}`)
+    return stream
+  }, [device])
+
+  const requestStream = useCallback(
+    async (peerId: string) => {
+      const offer = await webRTC.createOffer(peerId)
+      signalR.sendOffer(peerId, offer)
+    },
+    [webRTC]
+  )
   const getStream = (id: string) => peerStreams.find(s => s.id === id)
-  const addStream = (id: string, mediaStream: MediaStream, opts?: UserSettings) => {
+  const addStream = async (id: string, mediaStream: MediaStream, opts?: UserSettings) => {
     console.debug(`addStream for ${id}`)
     const stream = new PeerStream(id)
-    stream.setStream(mediaStream, opts ?? { threshold: 0.5, gain: 0.5 })
+    stream.initializePreStream(mediaStream, opts ?? { threshold: 0.5, gain: 0.5 })
 
     // assign an audio ref index
     for (let i = 0; i < audioRefs.length; i++) {
@@ -71,22 +115,25 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
     }
 
     if (stream.index === undefined) throw Error('should be room for another stream, but there isnt')
-    //console.log(`peer ${stream.id} set to audioRef ${stream.index}`)
 
-    //stream.connect(audioRefs[stream.index])
+    const postStream = await stream.initializePostStream()
+    if (id === user?.id) webRTC.setLocalStream(postStream)
+
     peerStreams.push(stream)
-
     setStreams(peerStreams.map((s, i) => new PeerStreamModel(s)))
   }
-
   const removeStream = (id: string) => {
     console.debug(`removeStream ${id}`)
+    webRTC.destroyConnection(id)
     const stream = getStream(id)
     if (stream) {
       stream.disconnect()
       peerStreams = peerStreams.filter(p => p.id !== id)
       setStreams(peerStreams.map((s, i) => new PeerStreamModel(s)))
     }
+  }
+  const destroyStreams = () => {
+    peerStreams.map(s => removeStream(s.id))
   }
 
   const connectVisualizer = (id: string, callback: (p: number) => void) => {
@@ -106,15 +153,10 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
     stream?.unsubscribeFromPostAnalyser()
   }
 
-  const streamMic = async (id: string) => {
-    console.log('attempting to get microphone stream')
-    const devices = await window.navigator.mediaDevices.enumerateDevices()
-    const stream = await window.navigator.mediaDevices.getUserMedia({
-      video: false,
-      audio: true,
-    })
-    console.log(`obtained local stream from mic ${devices[0].label}`)
-    addStream(id, stream, settings)
+  const streamMic = async () => {
+    if (!user) return
+    const stream = await obtainMicStream()
+    await addStream(user.id, stream, settings)
   }
 
   const setStreamThreshold = (id: string, p: number) => {
@@ -170,42 +212,64 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
       })
   }, [streams.length])
 
-  const streamContext = useMemo(
-    () => ({
-      streams,
-      testingMic,
-      setTestingMic,
-      getStream,
-      addStream,
-      removeStream,
-      muteUnmute,
-      connectVisualizer,
-      disconnectVisualizer,
-      connectIsStreamingVolume,
-      disconnectIsStreamingVolume,
-      streamMic,
-      setStreamThreshold,
-      setStreamGain,
-    }),
-    [streams, testingMic]
-  )
+  useEffect(() => {
+    if (webRTC) {
+      signalR.subscribeTo('offer', webRTC.receivedOffer)
+      signalR.subscribeTo('answer', webRTC.receivedAnswer)
+      signalR.subscribeTo('candidate', webRTC.receivedCandidate)
+    }
+    return () => {
+      if (webRTC) {
+        signalR.unsubscribeFrom('offer', webRTC.receivedOffer)
+        signalR.unsubscribeFrom('answer', webRTC.receivedAnswer)
+        signalR.unsubscribeFrom('candidate', webRTC.receivedCandidate)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    console.debug('streamManager mount')
+
+    return () => {
+      console.debug('streamManager unmount')
+    }
+  })
 
   const audios = useMemo(() => {
     console.debug('memoizing audios')
     return streams.map((stream, i) => (
       <audio
         key={i}
-        ref={ref => getStream(stream.id)?.connect(ref)}
+        ref={ref => getStream(stream.id)?.attach(ref)}
         autoPlay
         hidden={!isTest}
         controls
         muted={shouldAudioBeMuted(stream.id)}
       ></audio>
     ))
-  }, [streams, testingMic])
+  }, [streams.length, testingMic])
 
   return (
-    <Context.Provider value={streamContext}>
+    <Context.Provider
+      value={{
+        streams,
+        testingMic,
+        setTestingMic,
+        requestStream,
+        getStream,
+        addStream,
+        removeStream,
+        destroyStreams,
+        muteUnmute,
+        connectVisualizer,
+        disconnectVisualizer,
+        connectIsStreamingVolume,
+        disconnectIsStreamingVolume,
+        streamMic,
+        setStreamThreshold,
+        setStreamGain,
+      }}
+    >
       {audios}
       {children}
     </Context.Provider>
