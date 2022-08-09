@@ -214,14 +214,16 @@ namespace azure_function.Data
             return user;
         }
 
-        public ActiveUser SetUserName(string connectionId, string userName)
+        public ActiveUser SetUserProfile(string connectionId, string userName, string avatar, string sound)
         {
-            log.LogDebug($"SetUserName({connectionId}, {userName})");
+            log.LogDebug($"SetUserProfile({connectionId}, {userName})");
             var user = activeUsers.FirstOrDefault(u => u.SocketId == connectionId);
             if (user != null)
             {
                 log.LogInformation($"{connectionId} has changed name to {userName}");
                 user.Name = userName;
+                user.Avatar = avatar;
+                user.Sound = sound;
             }
             else log.LogWarning($"user with connection {connectionId} not found in active users");
             return user;
@@ -244,6 +246,12 @@ namespace azure_function.Data
 
         [JsonProperty("inCall")]
         public bool InCall { get; set; }
+
+        [JsonProperty("avatar")]
+        public string Avatar { get; set; }
+
+        [JsonProperty("sound")]
+        public string Sound { get; set; }
 
         [JsonIgnore]
         public DateTime? DestroyBy { get; set; }

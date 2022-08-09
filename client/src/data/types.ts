@@ -1,6 +1,8 @@
 export type User = {
   id: string
   name: string
+  avatar?: string
+  sound?: string
 }
 
 export type UserSettings = {
@@ -15,6 +17,8 @@ export interface RoomPeer {
   roomId: string
   inCall: boolean
   order: number
+  avatar?: string
+  sound?: string
 }
 
 export type Room = {

@@ -117,9 +117,9 @@ export class SignalRWrapper {
     this.connection.on('peerChangedName', e.onPeerChangedName)
   }
 
-  async setUserName(userName: string) {
-    console.log(`set username to ${userName}`)
-    if (this.connection) await this.connection.send('setUserName', userName)
+  async setUserProfile(userName: string, avatar?: string, sound?: string) {
+    console.log(`setUserProfile to ${userName} ${avatar ?? null} ${sound ?? null}`)
+    if (this.connection) await this.connection.send('setUserProfile', userName, avatar ?? null, sound ?? null)
   }
 
   async sendOffer(peerId: string, offer: RTCSessionDescriptionInit) {

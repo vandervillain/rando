@@ -1,6 +1,6 @@
 import React from 'react'
-import { useRoomContext } from '../../contexts/roomContext'
-import { useSessionContext } from '../../contexts/sessionManager'
+import { useRoomContext } from '../../providers/roomProvider'
+import { useSessionContext } from '../../providers/sessionProvider'
 import Dragbar from './dragbar'
 import Visualizer from './visualizer'
 

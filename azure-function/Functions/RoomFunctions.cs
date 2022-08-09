@@ -122,14 +122,14 @@ namespace azure_function.Functions
             roomMgr.DisconnectUser(context.ConnectionId);
         }
 
-        [FunctionName(nameof(SetUserName))]
-        public async Task SetUserName([SignalRTrigger] InvocationContext context, string userName)
+        [FunctionName(nameof(SetUserProfile))]
+        public async Task SetUserProfile([SignalRTrigger] InvocationContext context, string userName, string avatar = null, string sound = null)
         {
-            log.LogDebug($"{nameof(SetUserName)}: {context.ConnectionId}");
+            log.LogDebug($"{nameof(SetUserProfile)}: {context.ConnectionId}");
 
             if (!string.IsNullOrWhiteSpace(userName))
             {
-                var user = roomMgr.SetUserName(context.ConnectionId, userName);
+                var user = roomMgr.SetUserProfile(context.ConnectionId, userName, avatar, sound);
                 await ToPeers(context.ConnectionId, ClientEvent.peerChangedName, user);
             }
         }

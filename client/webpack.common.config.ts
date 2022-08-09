@@ -8,8 +8,7 @@ const config: Configuration = {
     path: path.resolve(__dirname, 'build'),
     publicPath: '/',
     filename: 'bundle.js',
-    assetModuleFilename: 'src/assets/images/[name].[ext]',
-    clean: true
+    clean: true,
   },
   entry: '/src/index.tsx',
   module: {
@@ -29,9 +28,9 @@ const config: Configuration = {
         use: ['style-loader', 'css-loader'],
       },
       {
-        test: /\.(png|jpg|gif|svg|eot|ttf|woff)$/,
-        type: 'asset/resource'
-     }
+        test: /\.(png|jpg|gif|svg|eot|ttf|woff|mp3|wav)$/,
+        type: 'asset/resource',
+      },
     ],
   },
   resolve: {
@@ -40,7 +39,7 @@ const config: Configuration = {
   plugins: [
     new HtmlWebpackPlugin({
       template: 'src/index.html',
-      favicon: 'src/assets/favicon.ico'
+      favicon: 'src/assets/favicon.ico',
     }),
     new HotModuleReplacementPlugin(),
     new Dotenv(),
