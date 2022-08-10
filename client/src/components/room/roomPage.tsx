@@ -4,6 +4,7 @@ import { RoomManager } from '.'
 import { SignalRProvider } from '../../providers/signalRProvider'
 import { StreamProvider } from '../../providers/streamProvider'
 import { UserSettingsProvider } from '../../providers/userSettingsProvider'
+import './room.css'
 
 const RoomPage = () => {
   const { id } = useParams()

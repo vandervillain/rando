@@ -2,12 +2,12 @@ import React from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './app.css'
 import Custom404 from './components/404'
-import { RequireAuth } from './components/auth'
+import { RequireAuth } from './components/login'
 import { SessionProvider } from './providers/sessionProvider'
 
 const HomePage = React.lazy(() => import('./components/home/homePage'))
 const RoomPage = React.lazy(() => import('./components/room/roomPage'))
-const LoginPage = React.lazy(() => import('./components/auth/loginPage'))
+const LoginPage = React.lazy(() => import('./components/login/loginPage'))
 
 export default () => {
   return (

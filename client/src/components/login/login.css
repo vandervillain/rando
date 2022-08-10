@@ -1,0 +1,42 @@
+.login .input {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+  }
+  .login .input > .avatar {
+    margin-right: 5px;
+  }
+  .login .input .inputs .line {
+    display: flex;
+    flex-direction: row;
+  }
+  .login .input .inputs .line:first-child {
+    margin-bottom: 5px;
+  }
+  .login input,
+  .login select {
+    height: 32px;
+    margin-right: 5px;
+    border: none;
+    outline: none;
+    border-radius: 3px;
+  }
+  
+  .login select {
+    width: 100%;
+    margin-right: 0;
+  }
+  
+  .login input.error {
+    border: 0 0 2px 2px red;
+  }
+  .login .avatar {
+    cursor: pointer;
+    box-shadow: 0 0 2px 2px black;
+    float: left;
+    margin: 2px;
+  }
+  .login .avatar:hover {
+    box-shadow: 0 0 2px 2px #4caf50;
+  }

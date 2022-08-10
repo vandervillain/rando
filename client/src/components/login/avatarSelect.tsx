@@ -1,5 +1,5 @@
 import React from 'react'
-import avatars from '../..//assets/images/avatars'
+import avatars from '../../assets/images/avatars'
 
 type AvatarSelectProps = {
   selectAvatar: (src: any) => void

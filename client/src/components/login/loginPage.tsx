@@ -2,6 +2,7 @@ import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useSessionContext } from '../../providers/sessionProvider'
 import LoginControl from './loginControl'
+import './login.css'
 
 const LoginPage = () => {
   const navigate = useNavigate()

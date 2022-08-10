@@ -1,0 +1,16 @@
+.create-room .input > * {
+  float: left;
+}
+.create-room input[type='text'] {
+  height: 32px;
+  margin-right: 5px;
+  border: none;
+  outline: none;
+  border-radius: 3px;
+}
+.error {
+  box-shadow: 0 0 2px 2px red;
+}
+.error-msg {
+  color: red;
+}

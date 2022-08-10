@@ -5,12 +5,12 @@ import Colors from '../../helpers/colors'
 import { useSignalRContext } from '../../providers/signalRProvider'
 
 const CreateRoom = () => {
+  console.debug('<CreateRoom />')
+  
   const navigate = useNavigate()
   const signalr = useSignalRContext()
   const [error, setError] = useState<string | null>(null)
   const roomnameRef = React.createRef<HTMLInputElement>()
-
-  console.debug('<CreateRoom />')
 
   const submit = async () => {
     const value = roomnameRef.current?.value
@@ -26,13 +26,11 @@ const CreateRoom = () => {
     if (e.key === 'Enter') submit()
   }
 
-  const getClass = () => (error ? 'error' : '')
-
   return (
     <div className='create-room'>
       <h2>create a room</h2>
       <div className='input'>
-        <input ref={roomnameRef} onSubmit={submit} className={getClass()} type='text' placeholder='enter room name' onKeyDown={keyDown} maxLength={200} />
+        <input ref={roomnameRef} onSubmit={submit} className={error ? 'error' : ''} type='text' placeholder='enter room name' onKeyDown={keyDown} maxLength={200} />
         <Glyph
           className='submit'
           options={{
@@ -45,22 +43,7 @@ const CreateRoom = () => {
           onClick={submit}
         />
       </div>
-      <div style={{ color: Colors.Red }}>{error}</div>
-      <style>{`
-        .create-room .input > * {
-          float: left;
-        }
-        .create-room input[type='text'] {
-          height: 32px;
-          margin-right: 5px;
-          border: none;
-          outline: none;
-          border-radius: 3px;
-        }
-        input.error {
-          border-box: 0 0 2px 2px red;
-        }
-      `}</style>
+      <div className='error-msg'>{error}</div>
     </div>
   )
 }

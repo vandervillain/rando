@@ -4,6 +4,7 @@ body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell,
     Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+  font-size: 16px;
 }
 
 * {
@@ -53,76 +54,4 @@ h4,
 h5,
 h6 {
   margin-top: 0;
-}
-
-.grid {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-
-  max-width: 800px;
-  margin-top: 3rem;
-}
-
-@media (max-width: 600px) {
-  .grid {
-    width: 100%;
-    flex-direction: column;
-  }
-}
-
-/** loginControl */
-.login .input {
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: center;
-}
-.login .input > .avatar {
-  margin-right: 5px;
-}
-.login .input .inputs .line {
-  display: flex;
-  flex-direction: row;
-}
-.login .input .inputs .line:first-child {
-  margin-bottom: 5px;
-}
-.login input,
-.login select {
-  height: 32px;
-  margin-right: 5px;
-  border: none;
-  outline: none;
-  border-radius: 3px;
-}
-
-.login select {
-  width: 100%;
-  margin-right: 0;
-}
-
-.login input.error {
-  border: 0 0 2px 2px red;
-}
-.login .avatar {
-  cursor: pointer;
-  box-shadow: 0 0 2px 2px black;
-  float: left;
-  margin: 2px;
-}
-.login .avatar:hover {
-  box-shadow: 0 0 2px 2px #4caf50;
-}
-
-/** callControl */
-
-.call-control {
-  text-align: center;
-  padding: 25px;
-}
-.call-control > * {
-  display: inline-block;
-  padding: 0 25px;
 }

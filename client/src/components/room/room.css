@@ -1,0 +1,8 @@
+.call-control {
+    text-align: center;
+    padding: 25px;
+  }
+  .call-control > * {
+    display: inline-block;
+    padding: 0 25px;
+  }
