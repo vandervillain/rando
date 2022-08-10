@@ -13,7 +13,7 @@ type StreamManagerContext = {
   setTestingMic: (testing: boolean) => void
   requestStream: (peerId: string) => Promise<void>
   getStream: (id: string) => PeerStream | undefined
-  addStream: (id: string, mediaStream: MediaStream, opts?: UserSettings) => void
+  addStream: (id: string, mediaStream: MediaStream) => void
   removeStream: (id: string) => void
   destroyStreams: () => void
   muteUnmute: (id: string, mute: boolean) => void
@@ -54,7 +54,7 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
     addStream(id, stream)
   })
 
-  const { settings, setUserGain, setUserThreshold } = useSettingsContext()
+  const { getUserSettings, saveUserGain, saveUserThreshold, saveUserMuted } = useSettingsContext()
   const [streams, setStreams] = useState<PeerStreamModel[]>([])
   const [testingMic, setTestingMic] = useState<boolean>(false)
   const [device, setDevice] = useState<MediaDeviceInfo>()
@@ -101,10 +101,11 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
     [webRTC]
   )
   const getStream = (id: string) => peerStreams.find(s => s.id === id)
-  const addStream = async (id: string, mediaStream: MediaStream, opts?: UserSettings) => {
+  const addStream = async (id: string, mediaStream: MediaStream) => {
     console.debug(`addStream for ${id}`)
+    const userSettings = getUserSettings(id)
     const stream = new PeerStream(id)
-    stream.initializePreStream(mediaStream, opts ?? { threshold: 0.5, gain: 0.5 })
+    stream.initializePreStream(mediaStream, userSettings)
 
     // assign an audio ref index
     for (let i = 0; i < audioRefs.length; i++) {
@@ -118,6 +119,7 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
 
     const postStream = await stream.initializePostStream()
     if (id === user?.id) webRTC.setLocalStream(postStream)
+
 
     peerStreams.push(stream)
     setStreams(peerStreams.map((s, i) => new PeerStreamModel(s)))
@@ -156,26 +158,20 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
   const streamMic = async () => {
     if (!user) return
     const stream = await obtainMicStream()
-    await addStream(user.id, stream, settings)
+    await addStream(user.id, stream)
   }
 
   const setStreamThreshold = (id: string, p: number) => {
     console.debug(`setStreamThreshold ${id}: ${p}`)
-    const stream = getStream(id)
-    if (stream) stream?.setThreshold(p)
-
-    if (id === user!.id) setUserThreshold(p)
-
+    getStream(id)?.setThreshold(p)
+    saveUserThreshold(id, p)
     setStreams(peerStreams.map((s, i) => new PeerStreamModel(s)))
   }
 
   const setStreamGain = (id: string, p: number) => {
     console.debug(`setStreamGain ${id}: ${p}`)
-    const stream = getStream(id)
-    if (stream) stream?.setGain(p)
-
-    if (id === user!.id) setUserGain(p)
-
+    getStream(id)?.setGain(p)
+    saveUserGain(id, p)
     setStreams(peerStreams.map((s, i) => new PeerStreamModel(s)))
   }
 
@@ -183,19 +179,22 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
     console.debug(`muteUnmute ${id}: ${mute}`)
     const stream = getStream(id)
     stream?.toggleStream(!mute)
-
+    saveUserMuted(id, mute)
     setStreams(peerStreams.map((s, i) => new PeerStreamModel(s)))
   }
 
-  const shouldAudioBeMuted = (id: string) => {
-    const peerStream = getStream(id)
-    if (peerStream) {
-      const currUser = peerStream.id === user?.id
-      if (currUser) return !testingMic
-      else return !peerStream.isEnabled()
-    }
-    return true
-  }
+  const shouldAudioBeMuted = useCallback(
+    (id: string) => {
+      const peerStream = getStream(id)
+      if (peerStream) {
+        const currUser = peerStream.id === user?.id
+        if (currUser) return !testingMic
+        return !peerStream.isEnabled()
+      }
+      return true
+    },
+    [streams, getUserSettings]
+  )
 
   useEffect(() => {
     const toDestroy = peerStreams.filter(p => !streams.some(s => s.id === p.id)).map(p => p.index)
@@ -247,7 +246,7 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
         muted={shouldAudioBeMuted(stream.id)}
       ></audio>
     ))
-  }, [streams.length, testingMic])
+  }, [shouldAudioBeMuted, testingMic])
 
   return (
     <Context.Provider

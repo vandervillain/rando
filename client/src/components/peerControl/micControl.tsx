@@ -2,7 +2,6 @@ import React from 'react'
 import { useStreamContext } from '../../providers/streamProvider'
 import { Glyph, GlyphType } from '../glyph'
 import Colors from '../../helpers/colors'
-import { useEffect } from 'react'
 
 type MicControlProps = {
   peerId: string

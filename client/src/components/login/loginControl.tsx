@@ -33,7 +33,7 @@ const LoginControl = ({ signIn }: LoginControlProps) => {
   const [error, setError] = useState<boolean>(false)
   const usernameRef = React.createRef<HTMLInputElement>()
 
-  const audio = useAudio()
+  const audio = useAudio([])
 
   const submit = async () => {
     const value = usernameRef.current?.value
@@ -42,7 +42,7 @@ const LoginControl = ({ signIn }: LoginControlProps) => {
   }
 
   const playSound = (sound: SoundType) => {
-    audio.playCustom(sound)
+    audio.playCustom('', sound)
   }
 
   const keyDown = (e: React.KeyboardEvent) => {

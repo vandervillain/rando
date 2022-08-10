@@ -32,9 +32,8 @@ export const RoomProvider: FunctionComponent<RoomContextProps> = ({ room }: Room
   const { user } = useSessionContext()
   const signalR = useSignalRContext()
   const { streamMic, requestStream, removeStream, destroyStreams } = useStreamContext()
-  const audio = useAudio()
-
   const [peers, setPeers] = useState<RoomPeer[]>([])
+  const audio = useAudio(peers)
 
   const currUserPeer = useMemo(
     () => (peers ? peers.find(p => p.id === user!.id) ?? null : null),
@@ -70,7 +69,6 @@ export const RoomProvider: FunctionComponent<RoomContextProps> = ({ room }: Room
   const onPeerLeftRoom = useCallback(
     async (peer: RoomPeer) => {
       console.log(`peer ${peer.name} left the room`)
-      if (peers.find(p => p.id === peer.id)?.inCall) audio.playOff()
       await removeStream(peer.id)
       const peerUpdate = [...peers].filter(p => p.id !== peer.id)
       setPeers(peerUpdate)
@@ -97,7 +95,7 @@ export const RoomProvider: FunctionComponent<RoomContextProps> = ({ room }: Room
       // if current user is in call too, then start up connection workflow
       if (currUserPeer?.inCall) {
         await requestStream(peer.id)
-        peer.sound ? audio.playCustom(peer.sound as SoundType) : audio.playOn()
+        peer.sound ? audio.playCustom(peer.id, peer.sound as SoundType) : audio.playOn(peer.id)
       }
       // need to highlight that the peer is in call in UI
       setInCall(peer.id, true)
@@ -110,7 +108,7 @@ export const RoomProvider: FunctionComponent<RoomContextProps> = ({ room }: Room
       console.log(`peer ${peer.name} left the call`)
       removeStream(peer.id)
 
-      if (currUserPeer?.inCall) audio.playOff()
+      if (currUserPeer?.inCall) audio.playOff(peer.id)
 
       setInCall(peer.id, false)
     },
@@ -135,7 +133,7 @@ export const RoomProvider: FunctionComponent<RoomContextProps> = ({ room }: Room
       await streamMic(currUserPeer.id)
       await signalR.joinCall()
 
-      currUserPeer.sound ? audio.playCustom(currUserPeer.sound as SoundType) : audio.playOn()
+      currUserPeer.sound ? audio.playCustom(currUserPeer.id, currUserPeer.sound as SoundType) : audio.playOn(currUserPeer.id)
 
       setInCall(currUserPeer.id, true)
     }
@@ -144,7 +142,7 @@ export const RoomProvider: FunctionComponent<RoomContextProps> = ({ room }: Room
   const leaveRoomCall = useCallback(() => {
     if (currUserPeer) {
       console.log('you are leaving the call')
-      audio.playOff()
+      audio.playOff(currUserPeer.id)
       destroyStreams()
       signalR.leaveCall()
       setInCall(currUserPeer.id, false)

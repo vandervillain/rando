@@ -5,21 +5,23 @@ export type User = {
   sound?: string
 }
 
-export type UserSettings = {
-  threshold: number
-  gain: number
+export type CallSettings = {
+  peers: (UserSettings & User)[]
 }
 
-export interface RoomPeer {
+export type UserSettings = {
   id: string
+  threshold: number
+  gain: number
+  muted: boolean
+}
+
+export type RoomPeer = {
   socketId: string
-  name: string
   roomId: string
   inCall: boolean
   order: number
-  avatar?: string
-  sound?: string
-}
+} & User
 
 export type Room = {
   id: string

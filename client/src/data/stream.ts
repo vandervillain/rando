@@ -3,6 +3,7 @@ import React from 'react'
 export type StreamOptions = {
   threshold: number
   gain: number
+  muted: boolean
 }
 export class PeerStreamModel {
   id: string
@@ -90,11 +91,12 @@ export class PeerStream {
     if (this.preStream) this.preStream.getAudioTracks()[0].enabled = enable
   }
 
-  initializePreStream = (stream: MediaStream, options: StreamOptions) => {
+  initializePreStream = (stream: MediaStream, options?: StreamOptions) => {
     this.preStream = stream
-    this.gain = options.gain
-    this.gainNode.gain.value = options.gain * this.maxGain
-    this.thresholdAnalyser.setThreshold(options.threshold)
+    this.gain = options?.gain ?? 0.25
+    this.gainNode.gain.value = this.gain * this.maxGain
+    this.thresholdAnalyser.setThreshold(options?.threshold ?? 0.25)
+    if (options?.muted) this.toggleStream(false)
     console.debug(`initialized pre stream for ${this.id}`)
   }
 
