@@ -6,6 +6,7 @@ import { useSignalRContext } from './signalRProvider'
 import { useSessionContext } from './sessionProvider'
 import useAudio from '../hooks/useAudio'
 import { SoundType } from '../assets/sounds'
+import { useSettingsContext } from './userSettingsProvider'
 
 type RoomContext = {
   room: Room
@@ -31,9 +32,10 @@ export const RoomProvider: FunctionComponent<RoomContextProps> = ({ room }: Room
   console.debug(`<RoomProvider room=${room.id},${room.name} />`)
   const { user } = useSessionContext()
   const signalR = useSignalRContext()
+  const { getUserSettings } = useSettingsContext()
   const { streamMic, requestStream, removeStream, destroyStreams } = useStreamContext()
   const [peers, setPeers] = useState<RoomPeer[]>([])
-  const audio = useAudio(peers)
+  const audio = useAudio(peers, getUserSettings)
 
   const currUserPeer = useMemo(
     () => (peers ? peers.find(p => p.id === user!.id) ?? null : null),
