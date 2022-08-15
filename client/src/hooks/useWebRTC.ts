@@ -57,7 +57,7 @@ const useWebRTC = (relay: IRTCRelay, onTrack: (id: string, stream: MediaStream) 
     conn.onicecandidate = async ({ candidate }) => {
       console.debug('onicecandidate')
       console.debug(candidate)
-      if (candidate?.candidate) await relay.sendCandidate(conn.peerId, candidate)
+      if (candidate) await relay.sendCandidate(conn.peerId, candidate)
     }
 
     conn.onicecandidateerror = (e: any) => {
