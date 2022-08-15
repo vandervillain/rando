@@ -15,8 +15,11 @@
   opacity: 0.3;
 }
 
-.peer-control.in-call {
+.room.in-call .peer-control {
   min-width: 450px;
+}
+
+.peer-control.in-call {
   opacity: 1;
 }
 
@@ -36,6 +39,7 @@ img.avatar {
 .decibels {
   grid-area: decibels;
   padding: 8px 0;
+  width: 300px
 }
 .controls {
   grid-area: controls;

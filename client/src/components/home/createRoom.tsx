@@ -1,12 +1,12 @@
 import React, { useState } from 'react'
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from 'react-router-dom'
 import { Glyph, GlyphType } from '../glyph'
 import Colors from '../../helpers/colors'
 import { useSignalRContext } from '../../providers/signalRProvider'
 
 const CreateRoom = () => {
   console.debug('<CreateRoom />')
-  
+
   const navigate = useNavigate()
   const signalr = useSignalRContext()
   const [error, setError] = useState<string | null>(null)
@@ -30,7 +30,15 @@ const CreateRoom = () => {
     <div className='create-room'>
       <h2>create a room</h2>
       <div className='input'>
-        <input ref={roomnameRef} onSubmit={submit} className={error ? 'error' : ''} type='text' placeholder='enter room name' onKeyDown={keyDown} maxLength={200} />
+        <input
+          ref={roomnameRef}
+          onSubmit={submit}
+          className={error ? 'error' : ''}
+          type='text'
+          placeholder='enter room name'
+          onKeyDown={keyDown}
+          maxLength={64}
+        />
         <Glyph
           className='submit'
           options={{

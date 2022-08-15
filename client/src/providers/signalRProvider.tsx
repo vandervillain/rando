@@ -11,7 +11,7 @@ type SignalRContext = {
   subscribeTo: (channel: SignalRChannels, callback: (...args: any[]) => any) => void
   unsubscribeFrom: (channel: SignalRChannels, callback: (...args: any[]) => any) => void
   // room
-  joinRoom: (roomId: string) => void
+  joinRoom: (roomId: string) => Promise<boolean>
   joinCall: () => void
   leaveCall: () => void
   // rtc
@@ -22,7 +22,6 @@ type SignalRContext = {
 
 export type RoomEventHandlers = {
   onJoinedRoom: (user: RoomPeer, room: Room, peers: RoomPeer[]) => void
-  onJoinRoomFailure: () => void
   onPeerJoinedRoom: (peer: RoomPeer) => void
   onPeerJoiningCall: (peer: RoomPeer) => Promise<void>
   onPeerLeftRoom: (peer: RoomPeer) => void
@@ -46,7 +45,6 @@ let connection: signalR.HubConnection
 
 export type SignalRChannels =
   | 'joinedRoom'
-  | 'joinRoomFailed'
   | 'initialPeers'
   | 'peerJoiningCall'
   | 'offer'
@@ -139,7 +137,7 @@ export const SignalRProvider: FunctionComponent = ({ children }) => {
   const joinRoom = async (roomId: string) => {
     if (!isConnected()) return
     console.log(`joining room ${roomId}`)
-    await connection.invoke('joinRoom', roomId)
+    return await connection.invoke('joinRoom', roomId)
   }
 
   const joinCall = async () => {
@@ -173,8 +171,8 @@ export const SignalRProvider: FunctionComponent = ({ children }) => {
   }
 
   useEffect(() => {
-    if (user) connect(user)
-  }, [user])
+    if (user && !initialized && !isConnected()) connect(user)
+  }, [user, initialized])
 
   useEffect(() => {
     console.debug('signalRManager mount')

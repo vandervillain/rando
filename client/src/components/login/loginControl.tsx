@@ -73,7 +73,7 @@ const LoginControl = ({ signIn }: LoginControlProps) => {
               type='text'
               placeholder='enter user name'
               onKeyDown={keyDown}
-              maxLength={16}
+              maxLength={32}
             />
             <Glyph
               className='submit'

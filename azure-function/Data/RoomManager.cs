@@ -174,17 +174,20 @@ namespace azure_function.Data
             log.LogDebug($"UserJoinRoom({connectionId}, {roomId})");
             var user = activeUsers.FirstOrDefault(u => u.SocketId == connectionId);
             var room = activeRooms.FirstOrDefault(r => r.Id == roomId);
-            if (user == null)
+            
+            if (user == null) {
                 log.LogWarning($"user for connection {connectionId} not found in active list");
-            else if (room == null)
-                log.LogWarning($"room {roomId} not found in active list");
-            else
-            {
-                user.RoomId = room.Id;
-                room.UserCount++;
-                room.DestroyBy = null;
-                log.LogInformation($"user {user.Name} joined room {room.Name}");
+                return null;
             }
+            if (room == null) {
+                log.LogWarning($"room {roomId} not found in active list");
+                return null;
+            }
+
+            user.RoomId = room.Id;
+            room.UserCount++;
+            room.DestroyBy = null;
+            log.LogInformation($"user {user.Name} joined room {room.Name}");
             return user;
         }
 

@@ -95,8 +95,7 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
 
   const requestStream = useCallback(
     async (peerId: string) => {
-      const offer = await webRTC.createOffer(peerId)
-      signalR.sendOffer(peerId, offer)
+      await webRTC.offer(peerId)
     },
     [webRTC]
   )
@@ -213,15 +212,15 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
 
   useEffect(() => {
     if (webRTC) {
-      signalR.subscribeTo('offer', webRTC.receivedOffer)
-      signalR.subscribeTo('answer', webRTC.receivedAnswer)
-      signalR.subscribeTo('candidate', webRTC.receivedCandidate)
+      signalR.subscribeTo('offer', webRTC.onOffer)
+      signalR.subscribeTo('answer', webRTC.onAnswer)
+      signalR.subscribeTo('candidate', webRTC.onCandidate)
     }
     return () => {
       if (webRTC) {
-        signalR.unsubscribeFrom('offer', webRTC.receivedOffer)
-        signalR.unsubscribeFrom('answer', webRTC.receivedAnswer)
-        signalR.unsubscribeFrom('candidate', webRTC.receivedCandidate)
+        signalR.unsubscribeFrom('offer', webRTC.onOffer)
+        signalR.unsubscribeFrom('answer', webRTC.onAnswer)
+        signalR.unsubscribeFrom('candidate', webRTC.onCandidate)
       }
     }
   }, [])

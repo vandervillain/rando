@@ -31,7 +31,13 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
 
   if (!user || !room || !currUserPeer || !peer) return null
 
-  const className = () => (currUserPeer.inCall ? 'peer-control in-call' : 'peer-control')
+  const className = () => {
+    let classes = ['peer-control']
+    if (peer.inCall) classes.push('in-call')
+    if (isCurrUser) classes.push('current-user')
+    return classes.join(' ')
+  }
+
   const peerDisplayName = () => (
     <>
       {peer.name} {isTest && <>({peer.id})</>}
@@ -55,12 +61,7 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
   }, [peer.inCall, stream])
 
   return (
-    <div
-      className={className()}
-      data-name={peer.name}
-      data-incall={peer.inCall}
-      key={peer.id}
-    >
+    <div className={className()} data-name={peer.name} data-incall={peer.inCall} key={peer.id}>
       <img
         className='avatar'
         src={peer.avatar ? peer.avatar : defaultAvatar}
@@ -82,11 +83,7 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
             />
           </div>
           <div className='controls'>
-            <MicControl
-              peerId={peer.id}
-              isCurrUser={isCurrUser}
-              muted={stream?.muted}
-            />
+            <MicControl peerId={peer.id} isCurrUser={isCurrUser} muted={stream?.muted} />
           </div>
         </>
       )}

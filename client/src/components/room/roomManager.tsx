@@ -18,24 +18,19 @@ const RoomManager = ({ roomId }: RoomManagerProps) => {
     setRoom(room)
   }, [])
 
-  const onJoinRoomFailure = useCallback(() => {
-    console.log('room does not exist')
-    navigate('/404')
-  }, [])
-
   useEffect(() => {
     signalR.subscribeTo('joinedRoom', onJoinedRoom)
-    signalR.subscribeTo('joinRoomFailed', onJoinRoomFailure)
     return () => {
       signalR.unsubscribeFrom('joinedRoom', onJoinedRoom)
-      signalR.unsubscribeFrom('joinRoomFailed', onJoinRoomFailure)
     }
   }, [roomId])
 
   useEffect(() => {
     if (room?.id !== roomId) {
       console.log('you are attempting to join room ' + roomId)
-      signalR.joinRoom(roomId)
+      signalR.joinRoom(roomId).then(success => {
+        if (!success) navigate('/404')
+      })
     }
   }, [room])
 

@@ -141,34 +141,32 @@ namespace azure_function.Functions
 
             await ExitRoom(context.ConnectionId);
 
-            if (!string.IsNullOrWhiteSpace(roomName))
-            {
-                var roomId = roomMgr.AddActiveRoom(context.ConnectionId, roomName);
-                return roomId;
-            }
-            return null;
+            if (string.IsNullOrWhiteSpace(roomName)) return null;
+
+            var roomId = roomMgr.AddActiveRoom(context.ConnectionId, roomName);
+            return roomId;
         }
 
         [FunctionName(nameof(JoinRoom))]
-        public async Task JoinRoom([SignalRTrigger] InvocationContext context, string roomId)
+        public async Task<bool> JoinRoom([SignalRTrigger] InvocationContext context, string roomId)
         {
             log.LogDebug($"{nameof(JoinRoom)}: {context.ConnectionId}");
 
             await ExitRoom(context.ConnectionId);
 
-            if (!string.IsNullOrWhiteSpace(roomId))
-            {
-                var room = roomMgr.GetRoom(roomId);
-                var usersInRoom = roomMgr.GetUsersInRoom(roomId);
-                var user = roomMgr.UserJoinRoom(context.ConnectionId, roomId);
-                if (user != null)
-                {
-                    await Groups.AddToGroupAsync(context.ConnectionId, roomId);
-                    await ToClient(context.ConnectionId, ClientEvent.joinedRoom, room);
-                    await ToClient(context.ConnectionId, ClientEvent.initialPeers, user, usersInRoom);
-                    await ToPeers(user, ClientEvent.peerJoinedRoom, user);
-                }
-            }
+            if (string.IsNullOrWhiteSpace(roomId)) return false;
+
+            var room = roomMgr.GetRoom(roomId);
+            var usersInRoom = roomMgr.GetUsersInRoom(roomId);
+            var user = roomMgr.UserJoinRoom(context.ConnectionId, roomId);
+            
+            if (user == null) return false;
+            
+            await Groups.AddToGroupAsync(context.ConnectionId, roomId);
+            await ToClient(context.ConnectionId, ClientEvent.joinedRoom, room);
+            await ToClient(context.ConnectionId, ClientEvent.initialPeers, user, usersInRoom);
+            await ToPeers(user, ClientEvent.peerJoinedRoom, user);
+            return true;
         }
 
         [FunctionName(nameof(JoinCall))]

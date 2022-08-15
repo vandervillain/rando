@@ -10,9 +10,17 @@ type RoomControlProps = {
 
 const RoomControl = ({ joinCall, leaveCall }: RoomControlProps) => {
   console.debug('<RoomControl />')
-  const { room } = useRoomContext()
+  const { room, currUserPeer } = useRoomContext()
+  console.debug(room)
+
+  const className = () => {
+    const classes = ['room']
+    if (currUserPeer?.inCall) classes.push('in-call')
+    return classes.join(' ')
+  }
+
   return (
-    <div className='room'>
+    <div className={className()}>
       {room && (
         <>
           <h2>{room.name}</h2>
