@@ -5,7 +5,8 @@
   "scripts": {
     "start:storage-emulator": "azurite -d azurite.log",
     "start:signalr-emulator": "cd azure-function && asrs-emulator start",
-    "start:function": "cd azure-function && func start"
+    "start:function": "cd azure-function && func start",
+    "start:client": "cd client && yarn start"
   },
   "repository": {
     "type": "git",

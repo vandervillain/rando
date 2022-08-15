@@ -68,6 +68,7 @@ export const SignalRProvider: FunctionComponent = ({ children }) => {
     console.log(`user ${user.id} is connecting to signalr`)
     try {
       let conn = new signalR.HubConnectionBuilder()
+        .configureLogging(signalR.LogLevel.Trace)
         .withAutomaticReconnect()
         .withUrl(url, {
           headers: {
