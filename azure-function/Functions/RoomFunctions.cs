@@ -159,9 +159,9 @@ namespace azure_function.Functions
             var room = roomMgr.GetRoom(roomId);
             var usersInRoom = roomMgr.GetUsersInRoom(roomId);
             var user = roomMgr.UserJoinRoom(context.ConnectionId, roomId);
-            
+
             if (user == null) return false;
-            
+
             await Groups.AddToGroupAsync(context.ConnectionId, roomId);
             await ToClient(context.ConnectionId, ClientEvent.joinedRoom, room);
             await ToClient(context.ConnectionId, ClientEvent.initialPeers, user, usersInRoom);
@@ -204,40 +204,56 @@ namespace azure_function.Functions
         [FunctionName(nameof(Offer))]
         public async Task Offer([SignalRTrigger] InvocationContext context, string userId, RTCSessionDescriptionInit offer)
         {
-            log.LogDebug($"{nameof(Offer)}: {context.ConnectionId}");
-
-            if (!string.IsNullOrWhiteSpace(userId) && offer != null)
+            try
             {
-                var user = roomMgr.GetUserByConnId(context.ConnectionId);
-                var peer = roomMgr.GetUserById(userId);
-                if (user == null) log.LogError($"user {user.Id} not found");
-                else if (peer == null) log.LogError($"peer {user.Id} not found");
-                else if (user.RoomId != peer.RoomId) log.LogError($"user is in room {user.RoomId} but peer is in room {peer.RoomId}");
-                else
+                log.LogDebug($"{nameof(Offer)}: {context.ConnectionId}");
+
+                if (!string.IsNullOrWhiteSpace(userId) && offer != null)
                 {
-                    log.LogInformation($"user {user.Id} sending an offer to peer {peer.Id}");
-                    await ToClient(peer.SocketId, ClientEvent.offer, user.Id, offer);
+                    var user = roomMgr.GetUserByConnId(context.ConnectionId);
+                    var peer = roomMgr.GetUserById(userId);
+                    if (user == null) log.LogError($"user {user.Id} not found");
+                    else if (peer == null) log.LogError($"peer {user.Id} not found");
+                    else if (user.RoomId != peer.RoomId) log.LogError($"user is in room {user.RoomId} but peer is in room {peer.RoomId}");
+                    else
+                    {
+                        log.LogInformation($"user {user.Id} sending an offer to peer {peer.Id}");
+                        await ToClient(peer.SocketId, ClientEvent.offer, user.Id, offer);
+                    }
                 }
+            }
+            catch (Exception e)
+            {
+                log.LogError(e.Message);
+                log.LogError(e.StackTrace);
             }
         }
 
         [FunctionName(nameof(Answer))]
         public async Task Answer([SignalRTrigger] InvocationContext context, string userId, RTCSessionDescriptionInit answer)
         {
-            log.LogDebug($"{nameof(Answer)}: {context.ConnectionId}");
-
-            if (!string.IsNullOrWhiteSpace(userId) && answer != null)
+            try
             {
-                var user = roomMgr.GetUserByConnId(context.ConnectionId);
-                var peer = roomMgr.GetUserById(userId);
-                if (user == null) log.LogError($"user {user.Id} not found");
-                else if (peer == null) log.LogError($"peer {user.Id} not found");
-                else if (user.RoomId != peer.RoomId) log.LogError($"user is in room {user.RoomId} but peer is in room {peer.RoomId}");
-                else
+                log.LogDebug($"{nameof(Answer)}: {context.ConnectionId}");
+
+                if (!string.IsNullOrWhiteSpace(userId) && answer != null)
                 {
-                    log.LogInformation($"user {user.Id} sending an answer to peer {peer.Id}");
-                    await ToClient(peer.SocketId, ClientEvent.answer, user.Id, answer);
+                    var user = roomMgr.GetUserByConnId(context.ConnectionId);
+                    var peer = roomMgr.GetUserById(userId);
+                    if (user == null) log.LogError($"user {user.Id} not found");
+                    else if (peer == null) log.LogError($"peer {user.Id} not found");
+                    else if (user.RoomId != peer.RoomId) log.LogError($"user is in room {user.RoomId} but peer is in room {peer.RoomId}");
+                    else
+                    {
+                        log.LogInformation($"user {user.Id} sending an answer to peer {peer.Id}");
+                        await ToClient(peer.SocketId, ClientEvent.answer, user.Id, answer);
+                    }
                 }
+            }
+            catch (Exception e)
+            {
+                log.LogError(e.Message);
+                log.LogError(e.StackTrace);
             }
         }
 
@@ -245,19 +261,28 @@ namespace azure_function.Functions
         public async Task Candidate([SignalRTrigger] InvocationContext context, string userId, RTCIceCandidate candidate)
         {
             log.LogDebug($"{nameof(Candidate)}: {context.ConnectionId}");
-
-            if (!string.IsNullOrWhiteSpace(userId) && candidate != null)
+            try
             {
-                var user = roomMgr.GetUserByConnId(context.ConnectionId);
-                var peer = roomMgr.GetUserById(userId);
-                if (user == null) log.LogError($"user {user.Id} not found");
-                else if (peer == null) log.LogError($"peer {user.Id} not found");
-                else if (user.RoomId != peer.RoomId) log.LogError($"user is in room {user.RoomId} but peer is in room {peer.RoomId}");
-                else
+                log.LogDebug($"userId: {userId}");
+                log.LogDebug($"candidate: {JsonConvert.SerializeObject(candidate)}");
+                if (!string.IsNullOrWhiteSpace(userId) && candidate != null)
                 {
-                    log.LogInformation($"user {user.Id} sending a candidate to peer {peer.Id}");
-                    await ToClient(peer.SocketId, ClientEvent.candidate, user.Id, candidate);
+                    var user = roomMgr.GetUserByConnId(context.ConnectionId);
+                    var peer = roomMgr.GetUserById(userId);
+                    if (user == null) log.LogError($"user {user.Id} not found");
+                    else if (peer == null) log.LogError($"peer {user.Id} not found");
+                    else if (user.RoomId != peer.RoomId) log.LogError($"user is in room {user.RoomId} but peer is in room {peer.RoomId}");
+                    else
+                    {
+                        log.LogInformation($"user {user.Id} sending a candidate to peer {peer.Id}");
+                        await ToClient(peer.SocketId, ClientEvent.candidate, user.Id, candidate);
+                    }
                 }
+            }
+            catch (Exception e)
+            {
+                log.LogError(e.Message);
+                log.LogError(e.StackTrace);
             }
         }
 
