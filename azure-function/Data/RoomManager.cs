@@ -30,14 +30,14 @@ namespace azure_function.Data
             {
                 activeRooms.Where(r => r.DestroyBy != null && r.DestroyBy < DateTime.Now).ToList().ForEach(r =>
           {
-                  log.LogInformation($"removing room {r.Name}");
-                  activeRooms.Remove(r);
-              });
+              log.LogInformation($"removing room {r.Name}");
+              activeRooms.Remove(r);
+          });
                 activeUsers.Where(u => u.DestroyBy != null && u.DestroyBy < DateTime.Now).ToList().ForEach(u =>
           {
-                  log.LogInformation($"removing user {u.Name}");
-                  activeUsers.Remove(u);
-              });
+              log.LogInformation($"removing user {u.Name}");
+              activeUsers.Remove(u);
+          });
             }, null, 0, userExpiration);
         }
 
@@ -80,19 +80,6 @@ namespace azure_function.Data
             log.LogDebug($"ReconnectOrAddUser({userId}, {connectionId})");
             var user = activeUsers.FirstOrDefault(u => u.Id == userId);
             if (user == null)
-                return AddActiveUser(userId, connectionId);
-
-            user.SocketId = connectionId;
-            user.DestroyBy = null;
-            log.LogInformation($"user {user.Name} will not disconnect");
-            return user;
-        }
-
-        public ActiveUser AddActiveUser(string userId, string connectionId)
-        {
-            log.LogDebug($"AddActiveUser({userId}, {connectionId})");
-            var user = activeUsers.FirstOrDefault(u => u.Id == userId);
-            if (user == null)
             {
                 user = new ActiveUser()
                 {
@@ -105,7 +92,8 @@ namespace azure_function.Data
             else
             {
                 user.SocketId = connectionId;
-                log.LogInformation($"changed user {user.Id} socketId to {connectionId}");
+                user.DestroyBy = null;
+                log.LogDebug($"user {user.Name} ({user.Id}) now has connectionId {connectionId} and will not disconnect");
             }
             return user;
         }
@@ -117,7 +105,7 @@ namespace azure_function.Data
             if (user != null)
             {
                 user.DestroyBy = new DateTime().AddMilliseconds(userExpiration);
-                log.LogInformation($"user {user.Name} disconnecting in {userExpiration}ms");
+                log.LogInformation($"{user.Name} ({user.Id}) disconnecting in {userExpiration}ms");
             }
             else log.LogWarning($"user for connection {connectionId} is not found in active users");
         }
@@ -148,24 +136,27 @@ namespace azure_function.Data
         {
             log.LogDebug($"UserLeaveRoom({connectionId})");
             var user = activeUsers.FirstOrDefault(u => u.SocketId == connectionId);
-            if (user != null)
+            if (user == null)
             {
-                user.InCall = false;
-                if (user.RoomId != null)
-                {
-                    var room = activeRooms.FirstOrDefault(r => r.Id == user.RoomId);
-                    if (room != null)
-                    {
-                        room.UserCount--;
-                        if (room.UserCount <= 0)
-                            room.DestroyBy = DateTime.Now.AddMilliseconds(emptyRoomExpiration);
-                    }
-                    user.RoomId = null;
-                    log.LogInformation($"removed user {user.Name} from room {room.Name}");
-                }
-                else log.LogWarning($"user {user.Id} is trying to leave a room but has a null RoomId");
+                log.LogWarning($"user for connection {connectionId} not found in active list");
+                return null;
             }
-            else log.LogWarning($"user for connection {connectionId} is not found in active users");
+
+            user.InCall = false;
+            if (user.RoomId != null)
+            {
+                var room = activeRooms.FirstOrDefault(r => r.Id == user.RoomId);
+                if (room != null)
+                {
+                    room.UserCount--;
+                    if (room.UserCount <= 0)
+                        room.DestroyBy = DateTime.Now.AddMilliseconds(emptyRoomExpiration);
+                }
+                user.RoomId = null;
+                log.LogInformation($"removed {user.Name} ({user.Id}) from room {room.Name}");
+            }
+            else log.LogWarning($"{user.Name} ({user.Id}) is trying to leave a room but has a null RoomId");
+
             return user;
         }
 
@@ -174,12 +165,14 @@ namespace azure_function.Data
             log.LogDebug($"UserJoinRoom({connectionId}, {roomId})");
             var user = activeUsers.FirstOrDefault(u => u.SocketId == connectionId);
             var room = activeRooms.FirstOrDefault(r => r.Id == roomId);
-            
-            if (user == null) {
+
+            if (user == null)
+            {
                 log.LogWarning($"user for connection {connectionId} not found in active list");
                 return null;
             }
-            if (room == null) {
+            if (room == null)
+            {
                 log.LogWarning($"room {roomId} not found in active list");
                 return null;
             }
@@ -187,7 +180,7 @@ namespace azure_function.Data
             user.RoomId = room.Id;
             room.UserCount++;
             room.DestroyBy = null;
-            log.LogInformation($"user {user.Name} joined room {room.Name}");
+            log.LogInformation($"{user.Name} ({user.Id}) joined room {room.Name}");
             return user;
         }
 
@@ -198,7 +191,7 @@ namespace azure_function.Data
             if (user != null)
             {
                 user.InCall = true;
-                log.LogInformation($"user {user.Name} joined call in room {user.RoomId}");
+                log.LogInformation($"{user.Name} ({user.Id}) joined call in room {user.RoomId}");
             }
             else log.LogWarning($"user with connection {connectionId} not found in active users");
             return user;
@@ -211,7 +204,7 @@ namespace azure_function.Data
             if (user != null)
             {
                 user.InCall = false;
-                log.LogInformation($"user {user.Name} left call in room {user.RoomId}");
+                log.LogInformation($"{user.Name} ({user.Id}) left call in room {user.RoomId}");
             }
             else log.LogWarning($"user with connection {connectionId} not found in active users");
             return user;
@@ -223,7 +216,7 @@ namespace azure_function.Data
             var user = activeUsers.FirstOrDefault(u => u.SocketId == connectionId);
             if (user != null)
             {
-                log.LogInformation($"{connectionId} has changed name to {userName}");
+                log.LogInformation($"{user.Name} ({user.Id}) setting profile to {userName} {avatar} {sound}");
                 user.Name = userName;
                 user.Avatar = avatar;
                 user.Sound = sound;

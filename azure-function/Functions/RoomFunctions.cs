@@ -89,28 +89,25 @@ namespace azure_function.Functions
             {
                 log.LogError(e.Message);
             }
-            //await UserGroups.RemoveFromAllGroupsAsync(connId);
         }
 
         [FunctionName(nameof(Negotiate))]
         public SignalRConnectionInfo Negotiate([HttpTrigger(AuthorizationLevel.Anonymous)] HttpRequest req)
         {
             log.LogDebug($"{req.Method} {req.GetDisplayUrl()}");
-            return Negotiate(req.Headers["x-ms-signalr-user-id"]);//, GetClaims(req.Headers["Authorization"]));
+            return Negotiate(req.Headers["x-ms-signalr-user-id"]);
         }
 
         [FunctionName(nameof(OnConnected))]
         public void OnConnected([SignalRTrigger] InvocationContext context)
         {
             roomMgr.ReconnectOrAddUser(context.UserId, context.ConnectionId);
-            log.LogInformation($"{context.UserId} connected as {context.ConnectionId}");
         }
 
         [FunctionName(nameof(OnReconnected))]
         public void OnReconnected([SignalRTrigger] InvocationContext context)
         {
             roomMgr.ReconnectOrAddUser(context.UserId, context.ConnectionId);
-            log.LogInformation($"{context.UserId} reconnected as {context.ConnectionId}");
         }
 
         [FunctionName(nameof(OnDisconnected))]
@@ -176,10 +173,7 @@ namespace azure_function.Functions
 
             var user = roomMgr.UserJoinCall(context.ConnectionId);
             if (user != null && user.RoomId != null)
-            {
-                // tell other clients in this room that user is joining call
                 await ToPeers(user, ClientEvent.peerJoiningCall, user);
-            }
         }
 
         [FunctionName(nameof(LeaveRoom))]
@@ -204,56 +198,38 @@ namespace azure_function.Functions
         [FunctionName(nameof(Offer))]
         public async Task Offer([SignalRTrigger] InvocationContext context, string userId, RTCSessionDescriptionInit offer)
         {
-            try
+            log.LogDebug($"{nameof(Offer)}: {context.ConnectionId}");
+            if (!string.IsNullOrWhiteSpace(userId) && offer != null)
             {
-                log.LogDebug($"{nameof(Offer)}: {context.ConnectionId}");
-
-                if (!string.IsNullOrWhiteSpace(userId) && offer != null)
+                var user = roomMgr.GetUserByConnId(context.ConnectionId);
+                var peer = roomMgr.GetUserById(userId);
+                if (user == null) log.LogError($"user {userId} not found");
+                else if (peer == null) log.LogError($"peer {user.Id} not found");
+                else if (user.RoomId != peer.RoomId) log.LogError($"user is in room {user.RoomId} but peer is in room {peer.RoomId}");
+                else
                 {
-                    var user = roomMgr.GetUserByConnId(context.ConnectionId);
-                    var peer = roomMgr.GetUserById(userId);
-                    if (user == null) log.LogError($"user {user.Id} not found");
-                    else if (peer == null) log.LogError($"peer {user.Id} not found");
-                    else if (user.RoomId != peer.RoomId) log.LogError($"user is in room {user.RoomId} but peer is in room {peer.RoomId}");
-                    else
-                    {
-                        log.LogInformation($"user {user.Id} sending an offer to peer {peer.Id}");
-                        await ToClient(peer.SocketId, ClientEvent.offer, user.Id, offer);
-                    }
+                    log.LogInformation($"user {user.Id} sending an offer to peer {peer.Id}");
+                    await ToClient(peer.SocketId, ClientEvent.offer, user.Id, offer);
                 }
-            }
-            catch (Exception e)
-            {
-                log.LogError(e.Message);
-                log.LogError(e.StackTrace);
             }
         }
 
         [FunctionName(nameof(Answer))]
         public async Task Answer([SignalRTrigger] InvocationContext context, string userId, RTCSessionDescriptionInit answer)
         {
-            try
+            log.LogDebug($"{nameof(Answer)}: {context.ConnectionId}");
+            if (!string.IsNullOrWhiteSpace(userId) && answer != null)
             {
-                log.LogDebug($"{nameof(Answer)}: {context.ConnectionId}");
-
-                if (!string.IsNullOrWhiteSpace(userId) && answer != null)
+                var user = roomMgr.GetUserByConnId(context.ConnectionId);
+                var peer = roomMgr.GetUserById(userId);
+                if (user == null) log.LogError($"user {userId} not found");
+                else if (peer == null) log.LogError($"peer {user.Id} not found");
+                else if (user.RoomId != peer.RoomId) log.LogError($"user is in room {user.RoomId} but peer is in room {peer.RoomId}");
+                else
                 {
-                    var user = roomMgr.GetUserByConnId(context.ConnectionId);
-                    var peer = roomMgr.GetUserById(userId);
-                    if (user == null) log.LogError($"user {user.Id} not found");
-                    else if (peer == null) log.LogError($"peer {user.Id} not found");
-                    else if (user.RoomId != peer.RoomId) log.LogError($"user is in room {user.RoomId} but peer is in room {peer.RoomId}");
-                    else
-                    {
-                        log.LogInformation($"user {user.Id} sending an answer to peer {peer.Id}");
-                        await ToClient(peer.SocketId, ClientEvent.answer, user.Id, answer);
-                    }
+                    log.LogInformation($"user {user.Id} sending an answer to peer {peer.Id}");
+                    await ToClient(peer.SocketId, ClientEvent.answer, user.Id, answer);
                 }
-            }
-            catch (Exception e)
-            {
-                log.LogError(e.Message);
-                log.LogError(e.StackTrace);
             }
         }
 
@@ -261,28 +237,18 @@ namespace azure_function.Functions
         public async Task Candidate([SignalRTrigger] InvocationContext context, string userId, RTCIceCandidate candidate)
         {
             log.LogDebug($"{nameof(Candidate)}: {context.ConnectionId}");
-            try
+            if (!string.IsNullOrWhiteSpace(userId) && candidate != null)
             {
-                log.LogDebug($"userId: {userId}");
-                log.LogDebug($"candidate: {JsonConvert.SerializeObject(candidate)}");
-                if (!string.IsNullOrWhiteSpace(userId) && candidate != null)
+                var user = roomMgr.GetUserByConnId(context.ConnectionId);
+                var peer = roomMgr.GetUserById(userId);
+                if (user == null) log.LogError($"user {userId} not found");
+                else if (peer == null) log.LogError($"peer {user.Id} not found");
+                else if (user.RoomId != peer.RoomId) log.LogError($"user is in room {user.RoomId} but peer is in room {peer.RoomId}");
+                else
                 {
-                    var user = roomMgr.GetUserByConnId(context.ConnectionId);
-                    var peer = roomMgr.GetUserById(userId);
-                    if (user == null) log.LogError($"user {user.Id} not found");
-                    else if (peer == null) log.LogError($"peer {user.Id} not found");
-                    else if (user.RoomId != peer.RoomId) log.LogError($"user is in room {user.RoomId} but peer is in room {peer.RoomId}");
-                    else
-                    {
-                        log.LogInformation($"user {user.Id} sending a candidate to peer {peer.Id}");
-                        await ToClient(peer.SocketId, ClientEvent.candidate, user.Id, candidate);
-                    }
+                    log.LogInformation($"user {user.Id} sending a candidate to peer {peer.Id}");
+                    await ToClient(peer.SocketId, ClientEvent.candidate, user.Id, candidate);
                 }
-            }
-            catch (Exception e)
-            {
-                log.LogError(e.Message);
-                log.LogError(e.StackTrace);
             }
         }
 
@@ -291,7 +257,6 @@ namespace azure_function.Functions
             loggedIn,
             createdRoom,
             joinedRoom,
-            joinedRoomFailed,
             initialPeers,
             peerJoinedRoom,
             peerLeftRoom,
