@@ -61,12 +61,6 @@ namespace azure_function.Data
             return activeUsers.FirstOrDefault(u => u.Id == userId);
         }
 
-        public ActiveUser GetUserByConnId(string connectionId)
-        {
-            log.LogDebug($"searching for user by connection {connectionId} in list {string.Join(", ", activeUsers.Select(u => u.SocketId))}");
-            return activeUsers.FirstOrDefault(u => u.SocketId == connectionId);
-        }
-
         public List<ActiveUser> GetUsersInRoom(string roomId)
         {
             return activeUsers.Where(u => u.RoomId != null && u.RoomId == roomId).ToList();
@@ -77,45 +71,43 @@ namespace azure_function.Data
             return activeRooms.FirstOrDefault(r => r.Id == roomId);
         }
 
-        public ActiveUser ReconnectOrAddUser(string userId, string connectionId)
+        public ActiveUser ReconnectOrAddUser(string userId)
         {
-            log.LogDebug($"ReconnectOrAddUser({userId}, {connectionId})");
+            log.LogDebug($"ReconnectOrAddUser({userId})");
             var user = activeUsers.FirstOrDefault(u => u.Id == userId);
             if (user == null)
             {
                 user = new ActiveUser()
                 {
-                    Id = userId,
-                    SocketId = connectionId
+                    Id = userId
                 };
                 activeUsers.Add(user);
-                log.LogInformation($"Added user {userId}, {connectionId}");
+                log.LogInformation($"Added user {userId}");
             }
             else
             {
-                user.SocketId = connectionId;
                 user.DestroyBy = null;
-                log.LogDebug($"user {user.Name} ({user.Id}) now has connectionId {connectionId} and will not disconnect");
+                log.LogDebug($"user {user.Name} ({user.Id}) will not disconnect");
             }
             return user;
         }
 
-        public void DisconnectUser(string connectionId)
+        public void DisconnectUser(string userId)
         {
-            log.LogDebug($"DisconnectUser({connectionId})");
-            var user = activeUsers.FirstOrDefault(u => u.SocketId == connectionId);
+            log.LogDebug($"DisconnectUser({userId})");
+            var user = activeUsers.FirstOrDefault(u => u.Id == userId);
             if (user != null)
             {
                 user.DestroyBy = new DateTime().AddMilliseconds(userExpiration);
                 log.LogInformation($"{user.Name} ({user.Id}) disconnecting in {userExpiration}ms");
             }
-            else log.LogWarning($"user for connection {connectionId} is not found in active users");
+            else log.LogWarning($"user {userId} is not found in active users");
         }
 
-        public string AddActiveRoom(string connectionId, string roomName)
+        public string AddActiveRoom(string userId, string roomName)
         {
-            log.LogDebug($"AddActiveRoom({connectionId}, {roomName})");
-            var user = activeUsers.FirstOrDefault(u => u.SocketId == connectionId);
+            log.LogDebug($"AddActiveRoom({userId}, {roomName})");
+            var user = activeUsers.FirstOrDefault(u => u.Id == userId);
             if (user != null)
             {
                 string id = RandomId();
@@ -130,17 +122,17 @@ namespace azure_function.Data
                 log.LogInformation($"added new room {roomName} with id {id}");
                 return id;
             }
-            else log.LogWarning($"user for connection {connectionId} is not found in active users");
+            else log.LogWarning($"user {userId} is not found in active users");
             return null;
         }
 
-        public ActiveUser UserLeaveRoom(string connectionId)
+        public ActiveUser UserLeaveRoom(string userId)
         {
-            log.LogDebug($"UserLeaveRoom({connectionId})");
-            var user = activeUsers.FirstOrDefault(u => u.SocketId == connectionId);
+            log.LogDebug($"UserLeaveRoom({userId})");
+            var user = activeUsers.FirstOrDefault(u => u.Id == userId);
             if (user == null)
             {
-                log.LogWarning($"user for connection {connectionId} not found in active list");
+                log.LogWarning($"user for connection {userId} not found in active list");
                 return null;
             }
 
@@ -162,15 +154,15 @@ namespace azure_function.Data
             return user;
         }
 
-        public ActiveUser UserJoinRoom(string connectionId, string roomId)
+        public ActiveUser UserJoinRoom(string userId, string roomId)
         {
-            log.LogDebug($"UserJoinRoom({connectionId}, {roomId})");
-            var user = activeUsers.FirstOrDefault(u => u.SocketId == connectionId);
+            log.LogDebug($"UserJoinRoom({userId}, {roomId})");
+            var user = activeUsers.FirstOrDefault(u => u.Id == userId);
             var room = activeRooms.FirstOrDefault(r => r.Id == roomId);
 
             if (user == null)
             {
-                log.LogWarning($"user for connection {connectionId} not found in active list");
+                log.LogWarning($"user {userId} not found in active list");
                 return null;
             }
             if (room == null)
@@ -186,36 +178,36 @@ namespace azure_function.Data
             return user;
         }
 
-        public ActiveUser UserJoinCall(string connectionId)
+        public ActiveUser UserJoinCall(string userId)
         {
-            log.LogDebug($"UserJoinCall({connectionId})");
-            var user = activeUsers.FirstOrDefault(u => u.SocketId == connectionId);
+            log.LogDebug($"UserJoinCall({userId})");
+            var user = activeUsers.FirstOrDefault(u => u.Id == userId);
             if (user != null)
             {
                 user.InCall = true;
                 log.LogInformation($"{user.Name} ({user.Id}) joined call in room {user.RoomId}");
             }
-            else log.LogWarning($"user with connection {connectionId} not found in active users");
+            else log.LogWarning($"user {userId} not found in active users");
             return user;
         }
 
-        public ActiveUser UserLeaveCall(string connectionId)
+        public ActiveUser UserLeaveCall(string userId)
         {
-            log.LogDebug($"UserLeaveCall({connectionId})");
-            var user = activeUsers.FirstOrDefault(u => u.SocketId == connectionId);
+            log.LogDebug($"UserLeaveCall({userId})");
+            var user = activeUsers.FirstOrDefault(u => u.Id == userId);
             if (user != null)
             {
                 user.InCall = false;
                 log.LogInformation($"{user.Name} ({user.Id}) left call in room {user.RoomId}");
             }
-            else log.LogWarning($"user with connection {connectionId} not found in active users");
+            else log.LogWarning($"user {userId} not found in active users");
             return user;
         }
 
-        public ActiveUser SetUserProfile(string connectionId, string userName, string avatar, string sound)
+        public ActiveUser SetUserProfile(string userId, string userName, string avatar, string sound)
         {
-            log.LogDebug($"SetUserProfile({connectionId}, {userName})");
-            var user = activeUsers.FirstOrDefault(u => u.SocketId == connectionId);
+            log.LogDebug($"SetUserProfile({userId}, {userName})");
+            var user = activeUsers.FirstOrDefault(u => u.Id == userId);
             if (user != null)
             {
                 log.LogInformation($"{user.Name} ({user.Id}) setting profile to {userName} {avatar} {sound}");
@@ -223,7 +215,7 @@ namespace azure_function.Data
                 user.Avatar = avatar;
                 user.Sound = sound;
             }
-            else log.LogWarning($"user with connection {connectionId} not found in active users");
+            else log.LogWarning($"user {userId} not found in active users");
             return user;
         }
     }
@@ -232,9 +224,6 @@ namespace azure_function.Data
     {
         [JsonProperty("id")]
         public string Id { get; set; }
-
-        [JsonProperty("socketId")]
-        public string SocketId { get; set; }
 
         [JsonProperty("name")]
         public string Name { get; set; }
