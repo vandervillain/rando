@@ -57,11 +57,13 @@ namespace azure_function.Data
 
         public ActiveUser GetUserById(string userId)
         {
+            log.LogDebug($"searching for user by id {userId} in list {string.Join(", ", activeUsers.Select(u => u.Id))}");
             return activeUsers.FirstOrDefault(u => u.Id == userId);
         }
 
         public ActiveUser GetUserByConnId(string connectionId)
         {
+            log.LogDebug($"searching for user by connection {connectionId} in list {string.Join(", ", activeUsers.Select(u => u.SocketId))}");
             return activeUsers.FirstOrDefault(u => u.SocketId == connectionId);
         }
 

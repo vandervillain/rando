@@ -203,8 +203,8 @@ namespace azure_function.Functions
             {
                 var user = roomMgr.GetUserByConnId(context.ConnectionId);
                 var peer = roomMgr.GetUserById(userId);
-                if (user == null) log.LogError($"user {userId} not found");
-                else if (peer == null) log.LogError($"peer {user.Id} not found");
+                if (user == null) log.LogError($"user not found");
+                else if (peer == null) log.LogError($"peer not found");
                 else if (user.RoomId != peer.RoomId) log.LogError($"user is in room {user.RoomId} but peer is in room {peer.RoomId}");
                 else
                 {
@@ -222,8 +222,8 @@ namespace azure_function.Functions
             {
                 var user = roomMgr.GetUserByConnId(context.ConnectionId);
                 var peer = roomMgr.GetUserById(userId);
-                if (user == null) log.LogError($"user {userId} not found");
-                else if (peer == null) log.LogError($"peer {user.Id} not found");
+                if (user == null) log.LogError($"user not found");
+                else if (peer == null) log.LogError($"peer not found");
                 else if (user.RoomId != peer.RoomId) log.LogError($"user is in room {user.RoomId} but peer is in room {peer.RoomId}");
                 else
                 {
@@ -241,8 +241,8 @@ namespace azure_function.Functions
             {
                 var user = roomMgr.GetUserByConnId(context.ConnectionId);
                 var peer = roomMgr.GetUserById(userId);
-                if (user == null) log.LogError($"user {userId} not found");
-                else if (peer == null) log.LogError($"peer {user.Id} not found");
+                if (user == null) log.LogError($"user not found");
+                else if (peer == null) log.LogError($"peer not found");
                 else if (user.RoomId != peer.RoomId) log.LogError($"user is in room {user.RoomId} but peer is in room {peer.RoomId}");
                 else
                 {
