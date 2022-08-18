@@ -119,7 +119,6 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
     const postStream = await stream.initializePostStream()
     if (id === user?.id) webRTC.setLocalStream(postStream)
 
-
     peerStreams.push(stream)
     setStreams(peerStreams.map((s, i) => new PeerStreamModel(s)))
   }
@@ -185,14 +184,12 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
   const shouldAudioBeMuted = useCallback(
     (id: string) => {
       const peerStream = getStream(id)
-      if (peerStream) {
-        const currUser = peerStream.id === user?.id
-        if (currUser) return !testingMic
-        return !peerStream.isEnabled()
-      }
-      return true
+      if (!peerStream) return true
+      const currUser = peerStream.id === user?.id
+      if (currUser) return !testingMic
+      return !peerStream.isEnabled()
     },
-    [streams, getUserSettings]
+    [streams, getUserSettings, testingMic]
   )
 
   useEffect(() => {
@@ -245,7 +242,7 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
         muted={shouldAudioBeMuted(stream.id)}
       ></audio>
     ))
-  }, [shouldAudioBeMuted, testingMic])
+  }, [streams, shouldAudioBeMuted])
 
   return (
     <Context.Provider

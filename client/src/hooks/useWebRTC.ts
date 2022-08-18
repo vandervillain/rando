@@ -109,17 +109,17 @@ const useWebRTC = (relay: IRTCRelay, onTrack: (id: string, stream: MediaStream) 
     console.log(`received offer from ${peerId}`)
     // 1. create an RTCPeerConnection
     createConnection(peerId)
-    // 2. create an RTCSessionDescription using the received offer
-    const session = new RTCSessionDescription(offer)
-    // 3. setRemoteDescription to tell WebRTC about peer's configuration
-    await connections[peerId].setRemoteDescription(session)
-    // 4. add the local stream's tracks
+    // 2. add the local stream's tracks
     addLocalStream(peerId)
+    // 3. create an RTCSessionDescription using the received offer
+    const session = new RTCSessionDescription(offer)
+    // 4. setRemoteDescription to tell WebRTC about peer's configuration
+    await connections[peerId].setRemoteDescription(session)
     // 5. create an answer to the peer's offer
     const answer = await connections[peerId].createAnswer()
     // 6. configure peer's end of the connection by matching the generated answer
     await connections[peerId].setLocalDescription(answer)
-    // 5. send answer to peer
+    // 7. send answer to peer
     await relay.sendAnswer(peerId, answer)
   }, [])
 
@@ -142,7 +142,7 @@ const useWebRTC = (relay: IRTCRelay, onTrack: (id: string, stream: MediaStream) 
       return
     }
 
-    await connections[peerId].addIceCandidate(candidate)
+    await connections[peerId].addIceCandidate(new RTCIceCandidate(candidate))
   }, [])
 
   /** add an audio stream to rtc connection */
