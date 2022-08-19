@@ -53,17 +53,13 @@ const useWebRTC = (relay: IRTCRelay, onTrack: (id: string, stream: MediaStream) 
       console.log(`pc.ontrack stream ${stream.id}`)
       onTrack(peerId, stream)
     }
-
     conn.onicecandidate = async ({ candidate }) => {
-      console.debug('onicecandidate')
-      console.debug(candidate)
+      console.debug(`onicecandidate ${candidate?.address}`)
       if (candidate) await relay.sendCandidate(conn.peerId, candidate)
     }
-
     conn.onicecandidateerror = (e: any) => {
       console.error(`onicecandidateerror: ${e.url} ${e.errorCode} ${e.errorText}`)
     }
-
     conn.onnegotiationneeded = e => {
       console.debug('onnegotiationneeded')
     }
@@ -80,84 +76,58 @@ const useWebRTC = (relay: IRTCRelay, onTrack: (id: string, stream: MediaStream) 
       console.debug(`onsignalingstatechange: ${conn.signalingState}`)
     }
 
+    console.log('adding local track to outgoing stream')
+    const tracks = localStream.getAudioTracks()
+    conn.addTrack(tracks[0], localStream)
+
     connections[peerId] = conn
     return conn
   }, [])
 
-  const addLocalStream = useCallback((peerId: string) => {
-    if (!localStream) throw Error('local stream not ready')
-    console.log('adding local track to outgoing stream')
-    const tracks = localStream.getAudioTracks()
-    connections[peerId].addTrack(tracks[0], localStream)
-  }, [])
-
   const offer = useCallback(async (peerId: string) => {
     console.debug(`send offer to ${peerId}`)
-    // 1. create an RTCPeerConnection
+    // create an RTCPeerConnection with the local stream
     createConnection(peerId)
-    // 2. add the local stream's tracks
-    addLocalStream(peerId)
-    // 3. send the new peer an offer to connect
+    // send the new peer an offer to connect
     const offer = await connections[peerId].createOffer()
-    // 4. set the description of peer's end of the call
+    // set the description of peer's end of the call
+    console.debug(`setting local description to ${JSON.stringify(offer)}`)
     await connections[peerId].setLocalDescription(offer)
-    // 5. send offer to peer
+    // send offer to peer
     await relay.sendOffer(peerId, offer)
   }, [])
 
   const onOffer = useCallback(async (peerId: string, offer: RTCSessionDescriptionInit) => {
-    console.log(`received offer from ${peerId}`)
-    // 1. create an RTCPeerConnection
+    console.debug(`received offer from ${peerId}: ${JSON.stringify(offer)}`)
+    // create an RTCPeerConnection with the local stream
     createConnection(peerId)
-    // 2. add the local stream's tracks
-    addLocalStream(peerId)
-    // 3. create an RTCSessionDescription using the received offer
+    // create an RTCSessionDescription using the received offer
     const session = new RTCSessionDescription(offer)
-    // 4. setRemoteDescription to tell WebRTC about peer's configuration
+    // setRemoteDescription to tell WebRTC about peer's configuration
+    console.debug(`setting remote description to ${JSON.stringify(session)}`)
     await connections[peerId].setRemoteDescription(session)
-    // 5. create an answer to the peer's offer
+    // create an answer to the peer's offer
     const answer = await connections[peerId].createAnswer()
-    // 6. configure peer's end of the connection by matching the generated answer
+    // configure peer's end of the connection by matching the generated answer
+    console.debug(`setting local description to ${JSON.stringify(answer)}`)
     await connections[peerId].setLocalDescription(answer)
-    // 7. send answer to peer
+    // send answer to peer
     await relay.sendAnswer(peerId, answer)
   }, [])
 
   const onAnswer = useCallback(async (peerId: string, answer: RTCSessionDescriptionInit) => {
-    console.log(`received answer from ${peerId}`)
-    if (!connections[peerId]) {
-      console.error(`connection for peer '${peerId}' not found`)
-      return
-    }
-    // 1. create an RTCSessionDescription using the received answer
+    console.debug(`received answer from ${peerId}: ${JSON.stringify(answer)}`)
+    // create an RTCSessionDescription using the received answer
     const description = new RTCSessionDescription(answer)
-    // 2. let local user's WebRTC layer know how peer's end of the connection is configured
+    // let local user's WebRTC layer know how peer's end of the connection is configured
+    console.debug(`setting remote description to ${JSON.stringify(description)}`)
     await connections[peerId].setRemoteDescription(description)
   }, [])
 
   const onCandidate = useCallback(async (peerId: string, candidate: RTCIceCandidate) => {
-    console.log(`received candidate from ${peerId}`)
-    if (!connections[peerId]) {
-      console.error(`connection for peer '${peerId}' not found`)
-      return
-    }
-
-    await connections[peerId].addIceCandidate(new RTCIceCandidate(candidate))
+    console.debug(`received ice candidate from ${peerId}: ${JSON.stringify(candidate)}`)
+    await connections[peerId].addIceCandidate(candidate)
   }, [])
-
-  /** add an audio stream to rtc connection */
-  const addTrackToRTCConnection = useCallback(
-    (id: string, track: MediaStreamTrack, stream: MediaStream) => {
-      console.debug('addTrackToRTCConnection')
-      if (!connections[id]) {
-        console.warn(`rtc connection '${id}' not found`)
-        return
-      }
-
-      connections[id].addTrack(track, stream)
-    },
-    []
-  )
 
   const destroyConnection = useCallback((id: string) => {
     if (!connections[id]) return
@@ -194,7 +164,6 @@ const useWebRTC = (relay: IRTCRelay, onTrack: (id: string, stream: MediaStream) 
     onOffer,
     onAnswer,
     onCandidate,
-    addTrackToRTCConnection,
     destroyConnection,
     destroy,
   }
