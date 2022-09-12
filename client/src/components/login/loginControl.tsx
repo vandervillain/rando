@@ -33,7 +33,7 @@ const LoginControl = ({ signIn }: LoginControlProps) => {
   const [error, setError] = useState<boolean>(false)
   const usernameRef = React.createRef<HTMLInputElement>()
 
-  const audio = useAudio([], () => ({ gain: 1, muted: false }))
+  const audio = useAudio(() => ({ gain: 1, muted: false }))
 
   const submit = async () => {
     const value = usernameRef.current?.value
