@@ -58,7 +58,7 @@ const useWebRTC = (relay: IRTCRelay, onTrack: (id: string, stream: MediaStream) 
       if (candidate) await relay.sendCandidate(conn.peerId, candidate)
     }
     conn.onicecandidateerror = (e: any) => {
-      console.error(`onicecandidateerror: ${e.url} ${e.errorCode} ${e.errorText}`)
+      console.warn(`onicecandidateerror: ${e.url} ${e.errorCode} ${e.errorText}`)
     }
     conn.onnegotiationneeded = e => {
       console.debug('onnegotiationneeded')
