@@ -7,11 +7,12 @@ import { useSessionContext } from './sessionProvider'
 import useAudio from '../hooks/useAudio'
 import { SoundType } from '../assets/sounds'
 import { useSettingsContext } from './userSettingsProvider'
+import { useNavigate } from 'react-router-dom'
 
 type RoomContext = {
   room: Room
   peers: RoomPeer[]
-  currUserPeer: RoomPeer | null
+  currUserPeer: RoomPeer | undefined
 }
 
 const Context = React.createContext<RoomContext | undefined>(undefined)
@@ -24,172 +25,117 @@ export const useRoomContext = (): RoomContext => {
   return context
 }
 
-type RoomContextProps = {
-  room: Room
+type RoomProviderProps = {
+  joinRoomId: string
 }
 
-export const RoomProvider: FunctionComponent<RoomContextProps> = ({ room }: RoomContextProps) => {
-  console.debug(`<RoomProvider room=${room.id},${room.name} />`)
+export const RoomProvider: FunctionComponent<RoomProviderProps> = ({ joinRoomId }) => {
+  console.debug(`<RoomProvider />`)
+  const [room, setRoom] = useState<Room | null>(null)
+  const [roomPeers, setRoomPeers] = useState<RoomPeer[]>([])
+  const navigate = useNavigate()
   const { user } = useSessionContext()
   const signalR = useSignalRContext()
   const { getUserSettings } = useSettingsContext()
   const { streamMic, requestStream, removeStream, destroyStreams } = useStreamContext()
-  const [peers, setPeers] = useState<RoomPeer[]>([])
-  const audio = useAudio(peers, getUserSettings)
+  const audio = useAudio(getUserSettings)
 
-  const currUserPeer = useMemo(
-    () => (peers ? peers.find(p => p.id === user!.id) ?? null : null),
-    [peers]
-  )
+  const onPeerJoinedRoom = (peer: RoomPeer, peers: RoomPeer[]) => {
+    console.log(`${peer.name} joined the room`)
+    setRoomPeers(peers)
+  }
 
-  const onInitialPeers = useCallback(
-    (user: RoomPeer, peers: RoomPeer[]) => {
-      console.log(`you joined these peers: ${peers.map(p => p.id).join(',')}`)
-      let order = 0
-      user.order = order++
-      peers.forEach(p => {
-        p.order = order++
-      })
-      setPeers([user, ...peers])
-    },
-    [peers]
-  )
+  const onPeerLeftRoom = async (peer: RoomPeer, peers: RoomPeer[]) => {
+    console.log(`${peer.name} left the room`)
+    await removeStream(peer.id)
+    setRoomPeers(peers)
+  }
 
-  const onPeerJoinedRoom = useCallback(
-    (peer: RoomPeer) => {
-      console.log(`peer ${peer.name} joined the room`)
-      if (!peers.some(p => p.id === peer.id)) {
-        const orderedPeers = [...peers].sort(p => p.order)
-        peer.order = orderedPeers[orderedPeers.length - 1].order + 1
-        const peerUpdate = [...orderedPeers, peer]
-        setPeers(peerUpdate)
-      }
-    },
-    [peers]
-  )
-
-  const onPeerLeftRoom = useCallback(
-    async (peer: RoomPeer) => {
-      console.log(`peer ${peer.name} left the room`)
-      await removeStream(peer.id)
-      const peerUpdate = [...peers].filter(p => p.id !== peer.id)
-      setPeers(peerUpdate)
-    },
-    [peers]
-  )
-
-  const setInCall = useCallback(
-    (id: string, inCall: boolean) => {
-      console.debug(`setInCall user ${id} = ${inCall}`)
-      const peer = peers.find(p => p.id === id)
-      if (peer) {
-        const update: RoomPeer = { ...peer, inCall: inCall }
-        const peersUpdate = [update, ...peers.filter(p => p.id !== id)]
-        setPeers(peersUpdate)
-      }
-    },
-    [peers]
-  )
-
-  const onPeerJoiningCall = useCallback(
-    async (peer: RoomPeer) => {
-      console.log(`${peer.name} is joining the call`)
-      // if current user is in call too, then start up connection workflow
-      if (currUserPeer?.inCall) {
+  const onPeerJoiningCall = async (peer: RoomPeer, peers: RoomPeer[]) => {
+    console.log(`${peer.name} is joining the call`)
+    // if current user is in call too, then start up connection workflow
+    const thisUser = peers.find(p => p.id === user!.id)
+    if (thisUser?.inCall) {
+      if (peer.id !== thisUser.id)
         await requestStream(peer.id)
-        peer.sound ? audio.playCustom(peer.id, peer.sound as SoundType) : audio.playOn(peer.id)
-      }
-      // need to highlight that the peer is in call in UI
-      setInCall(peer.id, true)
-    },
-    [peers]
-  )
-
-  const onPeerLeftCall = useCallback(
-    (peer: RoomPeer) => {
-      console.log(`peer ${peer.name} left the call`)
-      removeStream(peer.id)
-
-      if (currUserPeer?.inCall) audio.playOff(peer.id)
-
-      setInCall(peer.id, false)
-    },
-    [peers]
-  )
-
-  const onPeerChangedName = useCallback(
-    (peer: RoomPeer) => {
-      const roomPeer = peers.find(p => p.id === peer.id)
-      if (roomPeer) {
-        const update: RoomPeer = { ...roomPeer, name: peer.name }
-        const peersUpdate = [update, ...peers.filter(p => p.id !== peer.id)]
-        setPeers(peersUpdate)
-      }
-    },
-    [peers]
-  )
-
-  const joinRoomCall = useCallback(async () => {
-    if (currUserPeer) {
-      console.log('you are joining the call')
-      await streamMic(currUserPeer.id)
-      await signalR.joinCall()
-
-      currUserPeer.sound ? audio.playCustom(currUserPeer.id, currUserPeer.sound as SoundType) : audio.playOn(currUserPeer.id)
-
-      setInCall(currUserPeer.id, true)
+      audio.playOn(peer.id, peer.sound as SoundType)
     }
-  }, [peers])
+    setRoomPeers(peers)
+  }
 
-  const leaveRoomCall = useCallback(() => {
-    if (currUserPeer) {
-      console.log('you are leaving the call')
-      audio.playOff(currUserPeer.id)
-      destroyStreams()
-      signalR.leaveCall()
-      setInCall(currUserPeer.id, false)
-    }
-  }, [peers])
+  const onPeerLeftCall = (peer: RoomPeer, peers: RoomPeer[]) => {
+    console.log(`${peer.name} left the call`)
+    removeStream(peer.id)
+    const thisUser = peers.find(p => p.id === user!.id)
+    if (thisUser?.inCall) audio.playOff(peer.id)
 
-  // BINDING ROOM EVENTS
+    setRoomPeers(peers)
+  }
 
-  const bindRoomEvents = () => {
-    signalR.subscribeTo('initialPeers', onInitialPeers)
+  const onPeerChangedProfile = (peer: RoomPeer, peers: RoomPeer[]) => {
+    console.log(`${peer.name} has updated their profile`)
+    setRoomPeers(peers)
+  }
+
+  const joinRoomCall = async () => {
+    const thisUser = roomPeers.find(p => p.id === user!.id)
+    if (!thisUser) return
+    console.log('you are joining the call')
+    await streamMic(thisUser.id)
+    await signalR.joinCall()
+  }
+
+  const leaveRoomCall = async () => {
+    const thisUser = roomPeers.find(p => p.id === user!.id)
+    if (!thisUser) return
+    console.log('you are leaving the call')
+    destroyStreams()
+    await signalR.leaveCall()
+  }
+
+  useEffect(() => {
+    if (!room) return
+    console.debug('bind room events')
     signalR.subscribeTo('peerJoiningCall', onPeerJoiningCall)
     signalR.subscribeTo('peerJoinedRoom', onPeerJoinedRoom)
     signalR.subscribeTo('peerLeftRoom', onPeerLeftRoom)
     signalR.subscribeTo('peerLeftCall', onPeerLeftCall)
-    signalR.subscribeTo('peerChangedName', onPeerChangedName)
-  }
-
-  const unbindRoomEvents = () => {
-    signalR.unsubscribeFrom('initialPeers', onInitialPeers)
-    signalR.unsubscribeFrom('peerJoiningCall', onPeerJoiningCall)
-    signalR.unsubscribeFrom('peerJoinedRoom', onPeerJoinedRoom)
-    signalR.unsubscribeFrom('peerLeftRoom', onPeerLeftRoom)
-    signalR.unsubscribeFrom('peerLeftCall', onPeerLeftCall)
-    signalR.unsubscribeFrom('peerChangedName', onPeerChangedName)
-  }
-
-  useEffect(() => {
-    console.debug('bind room events')
-    bindRoomEvents()
+    signalR.subscribeTo('peerChangedName', onPeerChangedProfile)
 
     return () => {
-      console.debug('unbind room events')
-      unbindRoomEvents()
+      console.warn('unbind room events')
+      signalR.unsubscribeFrom('peerJoiningCall', onPeerJoiningCall)
+      signalR.unsubscribeFrom('peerJoinedRoom', onPeerJoinedRoom)
+      signalR.unsubscribeFrom('peerLeftRoom', onPeerLeftRoom)
+      signalR.unsubscribeFrom('peerLeftCall', onPeerLeftCall)
+      signalR.unsubscribeFrom('peerChangedName', onPeerChangedProfile)
     }
-  }, [peers])
+  }, [room])
 
-  return signalR.isConnected() ? (
+  useEffect(() => {
+    if (room?.id !== joinRoomId) {
+      console.log('you are attempting to join room ' + joinRoomId)
+      signalR.joinRoom(joinRoomId).then(roomInfo => {
+        console.log('received room info:')
+        console.log(roomInfo)
+        if (!roomInfo) navigate('/404')
+        setRoom(roomInfo.room)
+        setRoomPeers(roomInfo.peers)
+      })
+    }
+  }, [])
+
+  return room ? (
     <Context.Provider
       value={{
         room,
-        peers,
-        currUserPeer,
+        peers: roomPeers,
+        currUserPeer: roomPeers.find(p => p.id === user!.id),
       }}
     >
       <RoomControl joinCall={joinRoomCall} leaveCall={leaveRoomCall} />
     </Context.Provider>
-  ) : null
+  ) : (
+    <div>joining room...</div>
+  )
 }

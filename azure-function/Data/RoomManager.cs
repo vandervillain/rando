@@ -210,10 +210,10 @@ namespace azure_function.Data
             var user = activeUsers.FirstOrDefault(u => u.Id == userId);
             if (user != null)
             {
-                log.LogInformation($"{user.Name} ({user.Id}) setting profile to {userName} {avatar} {sound}");
                 user.Name = userName;
                 user.Avatar = avatar;
                 user.Sound = sound;
+                log.LogInformation($"{user.Id} set profile to {userName} {avatar} {sound}");
             }
             else log.LogWarning($"user {userId} not found in active users");
             return user;

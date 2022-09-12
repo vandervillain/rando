@@ -27,9 +27,9 @@ const connections: Record<string, PeerConnection> = {}
 let localStream: MediaStream
 
 const useWebRTC = (relay: IRTCRelay, onTrack: (id: string, stream: MediaStream) => void) => {
-  const [rtcConfig, setRTCConfig] = useState<RTCConfiguration>()
+  const rtcConfig = getTurnConfig()
 
-  const setLocalStream = useCallback((stream: MediaStream) => {
+  const setLocalStream = (stream: MediaStream) => {
     localStream = stream
     // const tracks = localStream.getTracks()
     // for (const c in connections) {
@@ -40,9 +40,9 @@ const useWebRTC = (relay: IRTCRelay, onTrack: (id: string, stream: MediaStream) 
     //     s.replaceTrack(tracks[0])
     //   }
     // }
-  }, [])
+  }
 
-  const createConnection = useCallback((peerId: string) => {
+  const createConnection = (peerId: string) => {
     console.debug(`createConnection to peer '${peerId}'`)
 
     destroyConnection(peerId)
@@ -82,9 +82,9 @@ const useWebRTC = (relay: IRTCRelay, onTrack: (id: string, stream: MediaStream) 
 
     connections[peerId] = conn
     return conn
-  }, [])
+  }
 
-  const offer = useCallback(async (peerId: string) => {
+  const offer = async (peerId: string) => {
     console.debug(`send offer to ${peerId}`)
     // create an RTCPeerConnection with the local stream
     createConnection(peerId)
@@ -95,9 +95,9 @@ const useWebRTC = (relay: IRTCRelay, onTrack: (id: string, stream: MediaStream) 
     await connections[peerId].setLocalDescription(offer)
     // send offer to peer
     await relay.sendOffer(peerId, offer)
-  }, [])
+  }
 
-  const onOffer = useCallback(async (peerId: string, offer: RTCSessionDescriptionInit) => {
+  const onOffer = async (peerId: string, offer: RTCSessionDescriptionInit) => {
     console.debug(`received offer from ${peerId}: ${JSON.stringify(offer)}`)
     // create an RTCPeerConnection with the local stream
     createConnection(peerId)
@@ -113,40 +113,36 @@ const useWebRTC = (relay: IRTCRelay, onTrack: (id: string, stream: MediaStream) 
     await connections[peerId].setLocalDescription(answer)
     // send answer to peer
     await relay.sendAnswer(peerId, answer)
-  }, [])
+  }
 
-  const onAnswer = useCallback(async (peerId: string, answer: RTCSessionDescriptionInit) => {
+  const onAnswer = async (peerId: string, answer: RTCSessionDescriptionInit) => {
     console.debug(`received answer from ${peerId}: ${JSON.stringify(answer)}`)
     // create an RTCSessionDescription using the received answer
     const description = new RTCSessionDescription(answer)
     // let local user's WebRTC layer know how peer's end of the connection is configured
     console.debug(`setting remote description to ${JSON.stringify(description)}`)
     await connections[peerId].setRemoteDescription(description)
-  }, [])
+  }
 
-  const onCandidate = useCallback(async (peerId: string, candidate: RTCIceCandidate) => {
+  const onCandidate = async (peerId: string, candidate: RTCIceCandidate) => {
     console.debug(`received ice candidate from ${peerId}: ${JSON.stringify(candidate)}`)
     await connections[peerId].addIceCandidate(candidate)
-  }, [])
+  }
 
-  const destroyConnection = useCallback((id: string) => {
+  const destroyConnection = (id: string) => {
     if (!connections[id]) return
     console.debug(`destroyConnection '${id}'`)
     connections[id].close()
     delete connections[id]
     console.log(`existing rtc connection ${id} closed`)
-  }, [])
+  }
 
-  const destroy = useCallback(() => {
+  const destroy = () => {
     console.debug('destroying webrtc')
     for (const r in connections) destroyConnection(r)
-  }, [])
+  }
 
   useEffect(() => {
-    const rtcConfig = getTurnConfig()
-    console.debug(`setting rtc config`)
-    setRTCConfig(rtcConfig)
-
     return destroy
   }, [])
 

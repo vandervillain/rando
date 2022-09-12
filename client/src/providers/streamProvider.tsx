@@ -59,14 +59,6 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
   const [testingMic, setTestingMic] = useState<boolean>(false)
   const [device, setDevice] = useState<MediaDeviceInfo>()
 
-  const audioRefs = [
-    React.createRef<HTMLAudioElement>(),
-    React.createRef<HTMLAudioElement>(),
-    React.createRef<HTMLAudioElement>(),
-    React.createRef<HTMLAudioElement>(),
-    React.createRef<HTMLAudioElement>(),
-  ]
-
   const getMediaDevices = useCallback(
     async () => await navigator.mediaDevices.enumerateDevices(),
     []
@@ -105,16 +97,6 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
     const userSettings = getUserSettings(id)
     const stream = new PeerStream(id)
     stream.initializePreStream(mediaStream, userSettings)
-
-    // assign an audio ref index
-    for (let i = 0; i < audioRefs.length; i++) {
-      if (!peerStreams.some(p => p.index === i)) {
-        stream.index = i
-        break
-      }
-    }
-
-    if (stream.index === undefined) throw Error('should be room for another stream, but there isnt')
 
     const postStream = await stream.initializePostStream()
     if (id === user?.id) webRTC.setLocalStream(postStream)
@@ -191,21 +173,6 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
     },
     [streams, getUserSettings, testingMic]
   )
-
-  useEffect(() => {
-    const toDestroy = peerStreams.filter(p => !streams.some(s => s.id === p.id)).map(p => p.index)
-
-    toDestroy.forEach(index => {
-      audioRefs[index!].current!.srcObject = null
-    })
-
-    console.debug('peerStreams indexes:')
-    peerStreams
-      .sort(p => p.index!)
-      .forEach(p => {
-        console.debug(`${p.index}: ${p.id}`)
-      })
-  }, [streams.length])
 
   useEffect(() => {
     if (webRTC) {

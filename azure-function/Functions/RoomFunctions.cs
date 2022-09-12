@@ -46,8 +46,7 @@ namespace azure_function.Functions
 
         private async Task ToUser(string userId, ClientEvent eventType, params object[] args)
         {
-            var user = roomMgr.GetUserById(userId);
-            await ToUser(user, eventType, args);
+            await ToUser(roomMgr.GetUserById(userId), eventType, args);
         }
 
         private async Task ToUser(ActiveUser user, ClientEvent eventType, params object[] args)
@@ -58,14 +57,12 @@ namespace azure_function.Functions
 
         private async Task ToRoom(string roomId, ClientEvent eventType, params object[] args)
         {
-            if (roomId != null)
-                await Clients.Group(roomId).SendCoreAsync(eventType.ToString(), args);
+            await Clients.Group(roomId).SendCoreAsync(eventType.ToString(), args);
         }
 
         private async Task ToPeers(string userId, string connectionId, ClientEvent eventType, params object[] args)
         {
-            var user = roomMgr.GetUserById(userId);
-            await ToPeers(user, connectionId, eventType, args);
+            await ToPeers(roomMgr.GetUserById(userId), connectionId, eventType, args);
         }
 
         private async Task ToPeers(ActiveUser user, string connectionId, ClientEvent eventType, params object[] args)
@@ -82,12 +79,24 @@ namespace azure_function.Functions
 
                 if (user != null && user.RoomId != null)
                 {
-                    log.LogInformation($"{userId} exiting room {user.RoomId}");
-                    await ToPeers(userId, connectionId, ClientEvent.peerLeftRoom, user);
-                    log.LogInformation($"told peers that {userId} exited room {user.RoomId}");
-                    await Groups.RemoveFromGroupAsync(userId, user.RoomId);
-                    log.LogInformation($"removed {userId} from group {user.RoomId}");
+                    string roomId = user.RoomId;
+                    log.LogInformation($"{userId} exiting room {roomId}");
+
+                    try
+                    {
+                        await Groups.RemoveFromGroupAsync(userId, roomId);
+                    }
+                    catch (Exception e)
+                    {
+                        // doesn't matter
+                        _ = e.ToString();
+                    }
                     roomMgr.UserLeaveRoom(userId);
+                    log.LogInformation($"removed {userId} from group {roomId}");
+
+                    // tell former peers that user left
+                    var usersInRoom = roomMgr.GetUsersInRoom(roomId);
+                    await ToRoom(roomId, ClientEvent.peerLeftRoom, user, usersInRoom);
                 }
             }
             catch (Exception e)
@@ -132,7 +141,8 @@ namespace azure_function.Functions
             if (!string.IsNullOrWhiteSpace(userName))
             {
                 var user = roomMgr.SetUserProfile(context.UserId, userName, avatar, sound);
-                await ToPeers(context.UserId, context.ConnectionId, ClientEvent.peerChangedName, user);
+                if (user.RoomId != null)
+                    await ToRoom(user.RoomId, ClientEvent.peerChangedName, user);
             }
         }
 
@@ -150,25 +160,27 @@ namespace azure_function.Functions
         }
 
         [FunctionName(nameof(JoinRoom))]
-        public async Task<bool> JoinRoom([SignalRTrigger] InvocationContext context, string roomId)
+        public async Task<object> JoinRoom([SignalRTrigger] InvocationContext context, string roomId)
         {
             log.LogDebug($"{nameof(JoinRoom)}: {context.UserId}");
 
             await ExitRoom(context.UserId, context.ConnectionId);
 
-            if (string.IsNullOrWhiteSpace(roomId)) return false;
+            if (string.IsNullOrWhiteSpace(roomId)) return null;
 
             var room = roomMgr.GetRoom(roomId);
-            var usersInRoom = roomMgr.GetUsersInRoom(roomId);
             var user = roomMgr.UserJoinRoom(context.UserId, roomId);
+            var usersInRoom = roomMgr.GetUsersInRoom(roomId);
 
-            if (user == null) return false;
+            if (user == null) return null;
 
             await Groups.AddToGroupAsync(context.ConnectionId, roomId);
-            await ToUser(context.UserId, ClientEvent.joinedRoom, room);
-            await ToUser(context.UserId, ClientEvent.initialPeers, user, usersInRoom);
-            await ToPeers(user, context.ConnectionId, ClientEvent.peerJoinedRoom, user);
-            return true;
+            await ToPeers(user.Id, context.ConnectionId, ClientEvent.peerJoinedRoom, user, usersInRoom);
+            return new
+            {
+                room = room,
+                peers = usersInRoom
+            };
         }
 
         [FunctionName(nameof(JoinCall))]
@@ -178,7 +190,10 @@ namespace azure_function.Functions
 
             var user = roomMgr.UserJoinCall(context.UserId);
             if (user != null && user.RoomId != null)
-                await ToPeers(user, context.ConnectionId, ClientEvent.peerJoiningCall, user);
+            {
+                var usersInRoom = roomMgr.GetUsersInRoom(user.RoomId);
+                await ToRoom(user.RoomId, ClientEvent.peerJoiningCall, user, usersInRoom);
+            }
         }
 
         [FunctionName(nameof(LeaveRoom))]
@@ -195,13 +210,14 @@ namespace azure_function.Functions
             var user = roomMgr.GetUserById(context.UserId);
             if (user != null && user.RoomId != null)
             {
-                await ToPeers(user, context.ConnectionId, ClientEvent.peerLeftCall, user);
                 roomMgr.UserLeaveCall(context.UserId);
+                var usersInRoom = roomMgr.GetUsersInRoom(user.RoomId);
+                await ToRoom(user.RoomId, ClientEvent.peerLeftCall, user, usersInRoom);
             }
         }
 
         [FunctionName(nameof(Offer))]
-        public async Task Offer([SignalRTrigger] InvocationContext context, string peerId,  RTCSessionDescriptionInit offer)
+        public async Task Offer([SignalRTrigger] InvocationContext context, string peerId, RTCSessionDescriptionInit offer)
         {
             log.LogDebug($"{nameof(Offer)}: {context.UserId}");
             if (!string.IsNullOrWhiteSpace(peerId) && offer != null)
@@ -259,10 +275,6 @@ namespace azure_function.Functions
 
         public enum ClientEvent
         {
-            loggedIn,
-            createdRoom,
-            joinedRoom,
-            initialPeers,
             peerJoinedRoom,
             peerLeftRoom,
             peerJoiningCall,

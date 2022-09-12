@@ -11,9 +11,10 @@ type SignalRContext = {
   subscribeTo: (channel: SignalRChannels, callback: (...args: any[]) => any) => void
   unsubscribeFrom: (channel: SignalRChannels, callback: (...args: any[]) => any) => void
   // room
-  joinRoom: (roomId: string) => Promise<boolean>
-  joinCall: () => void
-  leaveCall: () => void
+  requestPeers: () => Promise<RoomPeer[]>
+  joinRoom: (roomId: string) => Promise<{ room: Room; peers: RoomPeer[] }>
+  joinCall: () => Promise<void>
+  leaveCall: () => Promise<void>
   // rtc
   sendOffer: (peerId: string, offer: RTCSessionDescriptionInit) => Promise<void>
   sendAnswer: (peerId: string, offer: RTCSessionDescriptionInit) => Promise<void>
@@ -44,6 +45,7 @@ const url = process.env.SIGNALR_SERVER_URL!
 let connection: signalR.HubConnection
 
 export type SignalRChannels =
+  | 'userJoinedRoom'
   | 'joinedRoom'
   | 'initialPeers'
   | 'peerJoiningCall'
@@ -134,6 +136,12 @@ export const SignalRProvider: FunctionComponent = ({ children }) => {
     await connection.send('setUserProfile', userName, avatar, sound)
   }
 
+  const requestPeers = async () => {
+    if (!isConnected()) return
+    console.log(`requesting peers`)
+    return await connection.invoke('requestPeers')
+  }
+
   const joinRoom = async (roomId: string) => {
     if (!isConnected()) return
     console.log(`joining room ${roomId}`)
@@ -194,6 +202,7 @@ export const SignalRProvider: FunctionComponent = ({ children }) => {
         sendOffer,
         sendAnswer,
         sendCandidate,
+        requestPeers,
         joinRoom,
         joinCall,
         leaveCall,

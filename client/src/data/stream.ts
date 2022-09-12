@@ -25,7 +25,6 @@ export class PeerStreamModel {
 
 export class PeerStream {
   public id: string
-  public index?: number
   public isConnected: boolean
   public isOutputting: boolean
   public destroy = false

@@ -1,6 +1,6 @@
 import React from 'react'
 import { useParams } from 'react-router-dom'
-import { RoomManager } from '.'
+import { RoomProvider } from '../../providers/roomProvider'
 import { SignalRProvider } from '../../providers/signalRProvider'
 import { StreamProvider } from '../../providers/streamProvider'
 import { UserSettingsProvider } from '../../providers/userSettingsProvider'
@@ -12,7 +12,7 @@ const RoomPage = () => {
     <SignalRProvider>
       <UserSettingsProvider>
         <StreamProvider>
-          <RoomManager roomId={id} />
+          <RoomProvider joinRoomId={id} />
         </StreamProvider>
       </UserSettingsProvider>
     </SignalRProvider>
