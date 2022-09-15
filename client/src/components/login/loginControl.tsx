@@ -1,39 +1,23 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Glyph, GlyphType } from '../glyph'
 import Colors from '../../helpers/colors'
 import Avatar from '../../assets/images/avatar.png'
 import { AvatarSelect } from '.'
-import useAudio from '../../hooks/useAudio'
-import { SoundType } from '../../assets/sounds'
+import { Custom, CustomProfile } from './custom'
+import SoundSelect from './soundSelect'
+import avatars from '../../assets/images/avatars'
 
 type LoginControlProps = {
   signIn: (username: string, avatar?: string, sound?: string) => void
 }
-
-export const EntranceSounds = [
-  'on',
-  'enter',
-  'akm',
-  'pistol',
-  'pistol2',
-  'shotgun',
-  'goat',
-  'hyena',
-  'meow',
-  'moo',
-  'quack',
-  'turkey',
-  'woof',
-] as const
 
 const LoginControl = ({ signIn }: LoginControlProps) => {
   const [avatar, setAvatar] = useState<any>()
   const [sound, setSound] = useState<string>('on')
   const [selectingAvatar, setSelectingAvatar] = useState<boolean>(false)
   const [error, setError] = useState<boolean>(false)
+  const [customProfile, setCustomProfile] = useState<CustomProfile>()
   const usernameRef = React.createRef<HTMLInputElement>()
-
-  const audio = useAudio(() => ({ gain: 1, muted: false }))
 
   const submit = async () => {
     const value = usernameRef.current?.value
@@ -41,15 +25,19 @@ const LoginControl = ({ signIn }: LoginControlProps) => {
     else await signIn(value, avatar, sound)
   }
 
-  const playSound = (sound: SoundType) => {
-    audio.playCustom('', sound)
-  }
-
   const keyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') submit()
   }
 
   const getClass = () => (error ? 'error' : '')
+
+  useEffect(() => {
+    if (customProfile) {
+      setAvatar(avatars[customProfile.avatars[0]])
+      setSound(customProfile.sounds[0])
+      setSelectingAvatar(true)
+    } else if (!customProfile) setAvatar(undefined)
+  }, [customProfile])
 
   return (
     <div className='login'>
@@ -73,6 +61,12 @@ const LoginControl = ({ signIn }: LoginControlProps) => {
               type='text'
               placeholder='enter user name'
               onKeyDown={keyDown}
+              onInput={e => {
+                const value = (e.currentTarget as HTMLInputElement)?.value
+                if (value && Custom[value.toLocaleLowerCase()])
+                  setCustomProfile(Custom[value.toLocaleLowerCase()])
+                else setCustomProfile(undefined)
+              }}
               maxLength={32}
             />
             <Glyph
@@ -88,25 +82,19 @@ const LoginControl = ({ signIn }: LoginControlProps) => {
             />
           </div>
           <div className='line'>
-            <select
-              placeholder='entrance'
-              defaultValue={sound}
-              onChange={e => {
-                playSound(e.currentTarget.value as SoundType)
-                setSound(e.currentTarget.value)
+            <SoundSelect
+              filter={customProfile?.sounds}
+              selectSound={s => {
+                setSound(s)
               }}
-            >
-              {EntranceSounds.map(s => (
-                <option key={s} value={s}>
-                  {s === 'on' ? 'default entrance sound' : s}
-                </option>
-              ))}
-            </select>
+            />
           </div>
         </div>
       </div>
       {selectingAvatar && (
         <AvatarSelect
+          avatars={avatars}
+          filter={customProfile?.avatars}
           selectAvatar={a => {
             setAvatar(a)
             setSelectingAvatar(false)

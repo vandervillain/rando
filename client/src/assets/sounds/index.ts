@@ -16,6 +16,7 @@ import quack from './quack.wav'
 import meow from './meow.wav'
 import turkey from './turkey.wav'
 import woof from './woof.wav'
+import yooo from './yooo.wav'
 
 export const SoundArray = [
   'akm',
@@ -36,6 +37,7 @@ export const SoundArray = [
   'shotgun',
   'turkey',
   'woof',
+  'yooo'
 ] as const
 export type SoundType = typeof SoundArray[number]
 export const SoundOptions: Record<SoundType, any> = {
@@ -57,6 +59,7 @@ export const SoundOptions: Record<SoundType, any> = {
     'quack': quack,
     'turkey': turkey,
     'woof': woof,
+    'yooo': yooo
 }
 
 // const importAll = (r: __WebpackModuleApi.RequireContext) => r.keys().map(r)
