@@ -113,7 +113,7 @@ export const RoomProvider: FunctionComponent<RoomProviderProps> = ({ joinRoomId 
   }, [room])
 
   useEffect(() => {
-    if (room?.id !== joinRoomId) {
+    if (joinRoomId && room?.id !== joinRoomId) {
       console.log('you are attempting to join room ' + joinRoomId)
       signalR.joinRoom(joinRoomId).then(roomInfo => {
         console.log('received room info:')

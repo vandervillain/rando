@@ -30,12 +30,12 @@ namespace azure_function.Data
             {
                 activeRooms.Where(r => r.DestroyBy != null && r.DestroyBy < DateTime.Now).ToList().ForEach(r =>
           {
-              log.LogInformation($"removing room {r.Name}");
+              log.LogInformation($"destroying room {r.Name}");
               activeRooms.Remove(r);
           });
                 activeUsers.Where(u => u.DestroyBy != null && u.DestroyBy < DateTime.Now).ToList().ForEach(u =>
           {
-              log.LogInformation($"removing user {u.Name}");
+              log.LogInformation($"destroying user {u.Name}");
               activeUsers.Remove(u);
           });
             }, null, 0, userExpiration);

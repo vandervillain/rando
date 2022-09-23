@@ -10,6 +10,7 @@ using azure_function.Data;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using Microsoft.Azure.WebJobs.Extensions.SignalRService;
+using System.Linq;
 
 namespace azure_function.Functions
 {
@@ -77,27 +78,28 @@ namespace azure_function.Functions
             {
                 var user = roomMgr.GetUserById(userId);
 
-                if (user != null && user.RoomId != null)
+                if (user == null || user.RoomId == null) return;
+
+                string roomId = user.RoomId;
+                log.LogInformation($"{userId} exiting room {roomId}");
+
+                try
                 {
-                    string roomId = user.RoomId;
-                    log.LogInformation($"{userId} exiting room {roomId}");
-
-                    try
-                    {
-                        await Groups.RemoveFromGroupAsync(userId, roomId);
-                    }
-                    catch (Exception e)
-                    {
-                        // doesn't matter
-                        _ = e.ToString();
-                    }
-                    roomMgr.UserLeaveRoom(userId);
-                    log.LogInformation($"removed {userId} from group {roomId}");
-
-                    // tell former peers that user left
-                    var usersInRoom = roomMgr.GetUsersInRoom(roomId);
-                    await ToRoom(roomId, ClientEvent.peerLeftRoom, user, usersInRoom);
+                    await Groups.RemoveFromGroupAsync(userId, roomId);
                 }
+                catch (Exception e)
+                {
+                    // doesn't matter, probably already removed by disconnect/refresh
+                    _ = e.ToString();
+                }
+
+                roomMgr.UserLeaveRoom(userId);
+                log.LogInformation($"removed {userId} from room {roomId}");
+
+                // tell former peers that user left
+                var usersInRoom = roomMgr.GetUsersInRoom(roomId);
+                log.LogInformation($"telling peers {string.Join(',', usersInRoom.Select(u => u.Name))} that {userId} left room {roomId}");
+                await ToRoom(roomId, ClientEvent.peerLeftRoom, user, usersInRoom);
             }
             catch (Exception e)
             {
@@ -169,11 +171,13 @@ namespace azure_function.Functions
             if (string.IsNullOrWhiteSpace(roomId)) return null;
 
             var room = roomMgr.GetRoom(roomId);
+            log.LogDebug($"got room {roomId}");
             var user = roomMgr.UserJoinRoom(context.UserId, roomId);
-            var usersInRoom = roomMgr.GetUsersInRoom(roomId);
 
             if (user == null) return null;
 
+            var usersInRoom = roomMgr.GetUsersInRoom(roomId);
+            log.LogInformation($"telling peers {string.Join(',', usersInRoom.Select(u => u.Name))} that {user.Id} joined room {roomId}");
             await Groups.AddToGroupAsync(context.ConnectionId, roomId);
             await ToPeers(user.Id, context.ConnectionId, ClientEvent.peerJoinedRoom, user, usersInRoom);
             return new
