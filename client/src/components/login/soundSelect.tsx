@@ -40,7 +40,7 @@ export default ({ filter, selectSound }: SoundSelectProps) => {
       defaultValue={(filter ?? EntranceSounds)[0]}
       onChange={e => {
         playSound(e.currentTarget.value as SoundType)
-        selectSound
+        selectSound(e.currentTarget.value)
       }}
     >
       {(filter ?? EntranceSounds).map(s => (
