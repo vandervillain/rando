@@ -47,7 +47,7 @@ namespace azure_function.Functions
 
         private async Task ToUser(string userId, ClientEvent eventType, params object[] args)
         {
-            await ToUser(roomMgr.GetUserById(userId), eventType, args);
+            await ToUser(roomMgr.GetUser(userId), eventType, args);
         }
 
         private async Task ToUser(ActiveUser user, ClientEvent eventType, params object[] args)
@@ -63,7 +63,7 @@ namespace azure_function.Functions
 
         private async Task ToPeers(string userId, string connectionId, ClientEvent eventType, params object[] args)
         {
-            await ToPeers(roomMgr.GetUserById(userId), connectionId, eventType, args);
+            await ToPeers(roomMgr.GetUser(userId), connectionId, eventType, args);
         }
 
         private async Task ToPeers(ActiveUser user, string connectionId, ClientEvent eventType, params object[] args)
@@ -74,9 +74,10 @@ namespace azure_function.Functions
 
         private async Task ExitRoom(string userId, string connectionId)
         {
+            log.LogDebug($"ExitRoom({userId}, {connectionId})");
             try
             {
-                var user = roomMgr.GetUserById(userId);
+                var user = roomMgr.GetUser(userId);
 
                 if (user == null || user.RoomId == null) return;
 
@@ -129,7 +130,7 @@ namespace azure_function.Functions
         [FunctionName(nameof(OnDisconnected))]
         public void OnDisconnected([SignalRTrigger] InvocationContext context)
         {
-            log.LogDebug($"{nameof(OnDisconnected)}: {context.ConnectionId}");
+            log.LogDebug($"{nameof(OnDisconnected)}: {context.UserId}, {context.ConnectionId}");
 
             ExitRoom(context.UserId, context.ConnectionId).GetAwaiter().GetResult();
             roomMgr.DisconnectUser(context.UserId);
@@ -138,7 +139,7 @@ namespace azure_function.Functions
         [FunctionName(nameof(SetUserProfile))]
         public async Task SetUserProfile([SignalRTrigger] InvocationContext context, string userName, string avatar = null, string sound = null)
         {
-            log.LogDebug($"{nameof(SetUserProfile)}: {context.UserId}");
+            log.LogDebug($"{nameof(SetUserProfile)}: {context.UserId}, {context.ConnectionId}");
 
             if (!string.IsNullOrWhiteSpace(userName))
             {
@@ -151,7 +152,7 @@ namespace azure_function.Functions
         [FunctionName(nameof(CreateRoom))]
         public async Task<string> CreateRoom([SignalRTrigger] InvocationContext context, string roomName)
         {
-            log.LogDebug($"{nameof(CreateRoom)}: {context.UserId}");
+            log.LogDebug($"{nameof(CreateRoom)}: {context.UserId}, {context.ConnectionId}");
 
             await ExitRoom(context.UserId, context.ConnectionId);
 
@@ -164,7 +165,7 @@ namespace azure_function.Functions
         [FunctionName(nameof(JoinRoom))]
         public async Task<object> JoinRoom([SignalRTrigger] InvocationContext context, string roomId)
         {
-            log.LogDebug($"{nameof(JoinRoom)}: {context.UserId}");
+            log.LogDebug($"{nameof(JoinRoom)}: {context.UserId}, {context.ConnectionId}");
 
             await ExitRoom(context.UserId, context.ConnectionId);
 
@@ -190,7 +191,7 @@ namespace azure_function.Functions
         [FunctionName(nameof(JoinCall))]
         public async Task JoinCall([SignalRTrigger] InvocationContext context)
         {
-            log.LogDebug($"{nameof(JoinCall)}: {context.UserId}");
+            log.LogDebug($"{nameof(JoinCall)}: {context.UserId}, {context.ConnectionId}");
 
             var user = roomMgr.UserJoinCall(context.UserId);
             if (user != null && user.RoomId != null)
@@ -203,15 +204,15 @@ namespace azure_function.Functions
         [FunctionName(nameof(LeaveRoom))]
         public async Task LeaveRoom([SignalRTrigger] InvocationContext context)
         {
-            log.LogDebug($"{nameof(LeaveRoom)}: {context.UserId}");
+            log.LogDebug($"{nameof(LeaveRoom)}: {context.UserId}, {context.ConnectionId}");
             await ExitRoom(context.UserId, context.ConnectionId);
         }
 
         [FunctionName(nameof(LeaveCall))]
         public async Task LeaveCall([SignalRTrigger] InvocationContext context)
         {
-            log.LogDebug($"{nameof(LeaveRoom)}: {context.UserId}");
-            var user = roomMgr.GetUserById(context.UserId);
+            log.LogDebug($"{nameof(LeaveRoom)}: {context.UserId}, {context.ConnectionId}");
+            var user = roomMgr.GetUser(context.UserId);
             if (user != null && user.RoomId != null)
             {
                 roomMgr.UserLeaveCall(context.UserId);
@@ -223,11 +224,11 @@ namespace azure_function.Functions
         [FunctionName(nameof(Offer))]
         public async Task Offer([SignalRTrigger] InvocationContext context, string peerId, RTCSessionDescriptionInit offer)
         {
-            log.LogDebug($"{nameof(Offer)}: {context.UserId}");
+            log.LogDebug($"{nameof(Offer)}: {context.UserId}, {context.ConnectionId}");
             if (!string.IsNullOrWhiteSpace(peerId) && offer != null)
             {
-                var user = roomMgr.GetUserById(context.UserId);
-                var peer = roomMgr.GetUserById(peerId);
+                var user = roomMgr.GetUser(context.UserId);
+                var peer = roomMgr.GetUser(peerId);
                 if (user == null) log.LogError("user not found");
                 else if (peer == null) log.LogError("peer not found");
                 else if (user.RoomId != peer.RoomId) log.LogError($"user is in room {user.RoomId} but peer is in room {peer.RoomId}");
@@ -242,11 +243,11 @@ namespace azure_function.Functions
         [FunctionName(nameof(Answer))]
         public async Task Answer([SignalRTrigger] InvocationContext context, string peerId, RTCSessionDescriptionInit answer)
         {
-            log.LogDebug($"{nameof(Answer)}: {context.UserId}");
+            log.LogDebug($"{nameof(Answer)}: {context.UserId}, {context.ConnectionId}");
             if (!string.IsNullOrWhiteSpace(peerId) && answer != null)
             {
-                var user = roomMgr.GetUserById(context.UserId);
-                var peer = roomMgr.GetUserById(peerId);
+                var user = roomMgr.GetUser(context.UserId);
+                var peer = roomMgr.GetUser(peerId);
                 if (user == null) log.LogError("user not found");
                 else if (peer == null) log.LogError("peer not found");
                 else if (user.RoomId != peer.RoomId) log.LogError($"user is in room {user.RoomId} but peer is in room {peer.RoomId}");
@@ -261,11 +262,11 @@ namespace azure_function.Functions
         [FunctionName(nameof(Candidate))]
         public async Task Candidate([SignalRTrigger] InvocationContext context, string peerId, RTCIceCandidate candidate)
         {
-            log.LogDebug($"{nameof(Candidate)}: {context.UserId}");
+            log.LogDebug($"{nameof(Candidate)}: {context.UserId}, {context.ConnectionId}");
             if (!string.IsNullOrWhiteSpace(peerId) && candidate != null)
             {
-                var user = roomMgr.GetUserById(context.UserId);
-                var peer = roomMgr.GetUserById(peerId);
+                var user = roomMgr.GetUser(context.UserId);
+                var peer = roomMgr.GetUser(peerId);
                 if (user == null) log.LogError("user not found");
                 else if (peer == null) log.LogError("peer not found");
                 else if (user.RoomId != peer.RoomId) log.LogError($"user is in room {user.RoomId} but peer is in room {peer.RoomId}");
