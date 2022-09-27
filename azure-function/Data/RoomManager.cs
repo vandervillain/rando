@@ -22,7 +22,7 @@ namespace azure_function.Data
 
         public RoomManager(ILogger<RoomManager> logger)
         {
-            log.LogDebug("RoomManager()");
+            logger.LogDebug("RoomManager()");
             log = logger;
             activeUsers = new List<ActiveUser>();
             activeRooms = new List<ActiveRoom>();
