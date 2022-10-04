@@ -66,6 +66,7 @@ namespace azure_function.Data
 
         public ActiveRoom GetRoom(string roomId)
         {
+            log.LogDebug($"searching for room by id {roomId} in list {string.Join(", ", activeRooms.Select(u => u.Id))}");
             var room = activeRooms.FirstOrDefault(r => r.Id == roomId);
             if (room == null) log.LogWarning($"room {roomId} not found in active list");
             return room;
@@ -135,7 +136,7 @@ namespace azure_function.Data
             user.InCall = false;
             if (user.RoomId == null) return user;
 
-            var room = activeRooms.FirstOrDefault(r => r.Id == user.RoomId);
+            var room = GetRoom(user.RoomId);
             if (room != null && activeUsers.Where(u => u.RoomId == room.Id).Count() == 0)
                 room.DestroyBy = DateTime.Now.AddMilliseconds(emptyRoomExpiration);
 
