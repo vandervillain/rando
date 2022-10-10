@@ -1,5 +1,6 @@
 import * as signalR from '@microsoft/signalr'
 import React, { FunctionComponent, useEffect, useState } from 'react'
+import ForcedOut from '../components/errors/forcedOut'
 import { Room, RoomPeer, User } from '../data/types'
 import { useSessionContext } from './sessionProvider'
 
@@ -61,6 +62,7 @@ export const SignalRProvider: FunctionComponent = ({ children }) => {
   console.debug('<SignalRProvider />')
   const { user } = useSessionContext()
   const [initialized, setInitialized] = useState<boolean>(false)
+  const [forcedOut, setForcedOut] = useState<boolean>(false)
 
   const isConnected = () => connection && connection.state === signalR.HubConnectionState.Connected
 
@@ -89,11 +91,17 @@ export const SignalRProvider: FunctionComponent = ({ children }) => {
         console.log('signalr reconnected')
       })
 
+      conn.on('forceDisconnect', async () => {
+        console.warn('forced disconnect due to logging in elsewhere as same user')
+        await conn.stop()
+        setForcedOut(true)
+      })
+
       await conn.start()
       console.info('signalr connection started at ' + url)
 
       console.log(`setUserProfile to ${user.name} ${user.avatar} ${user.sound}`)
-      conn.send('setUserProfile', user.name, user.avatar ?? null, user.sound ?? null)
+      await conn.send('setUserProfile', user.name, user.avatar ?? null, user.sound ?? null)
 
       connection = conn
       setInitialized(true)
@@ -190,7 +198,9 @@ export const SignalRProvider: FunctionComponent = ({ children }) => {
     }
   })
 
-  return (
+  return forcedOut ? (
+    <ForcedOut />
+  ) : (
     <Context.Provider
       value={{
         isConnected,

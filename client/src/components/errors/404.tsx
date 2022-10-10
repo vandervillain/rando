@@ -3,10 +3,10 @@ import { Link } from 'react-router-dom'
 
 export default function Custom404() {
   return (
-    <div className='custom404'>
+    <div className='error-page'>
       <h2>404</h2>
-      <p>Where's the party, pal?</p>
-      <Link to='..'>go home</Link>
+      <p>A leader can't lead 'til he knows where he's going.</p>
+      <Link to='..'>we have to go back!</Link>
     </div>
   )
 }

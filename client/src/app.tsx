@@ -1,7 +1,7 @@
 import React from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './app.css'
-import Custom404 from './components/404'
+import Custom404 from './components/errors/404'
 import { RequireAuth } from './components/login'
 import { SessionProvider } from './providers/sessionProvider'
 

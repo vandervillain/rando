@@ -12,7 +12,7 @@ type CallControlProps = {
 
 const CallControl = ({ joinCall, leaveCall }: CallControlProps) => {
   const { user } = useSessionContext()
-  const { room, currUserPeer } = useRoomContext()
+  const { currUserPeer } = useRoomContext()
   const { streams, muteUnmute } = useStreamContext()
   
   if (!user || !currUserPeer) return null

@@ -52,7 +52,7 @@ namespace azure_function.Functions
 
         private async Task ToUser(ActiveUser user, ClientEvent eventType, params object[] args)
         {
-            if (user != null && user.RoomId != null)
+            if (user != null)
                 await Clients.User(user.Id).SendCoreAsync(eventType.ToString(), args);
         }
 
@@ -109,10 +109,18 @@ namespace azure_function.Functions
         }
 
         [FunctionName(nameof(Negotiate))]
-        public SignalRConnectionInfo Negotiate([HttpTrigger(AuthorizationLevel.Anonymous)] HttpRequest req)
+        public async Task<SignalRConnectionInfo> Negotiate([HttpTrigger(AuthorizationLevel.Anonymous)] HttpRequest req)
         {
             log.LogDebug($"{req.Method} {req.GetDisplayUrl()}");
-            return Negotiate(req.Headers["x-ms-signalr-user-id"]);
+            string userId = req.Headers["x-ms-signalr-user-id"];
+            var existingUser = roomMgr.GetUser(userId);
+            if (existingUser != null)
+            {
+                await ToUser(existingUser, ClientEvent.forceDisconnect);
+                await ExitRoom(userId, null);
+                roomMgr.DisconnectUser(userId);
+            }
+            return Negotiate(userId);
         }
 
         [FunctionName(nameof(OnConnected))]
@@ -288,7 +296,9 @@ namespace azure_function.Functions
             // web rtc
             offer,
             answer,
-            candidate
+            candidate,
+            // prevent multiple pages of same connection
+            forceDisconnect
         }
     }
 }

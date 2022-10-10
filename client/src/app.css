@@ -16,6 +16,7 @@ h2 {
 }
 
 a {
+  cursor: pointer;
   color: #32ff32;
   text-decoration: none;
 }
@@ -51,6 +52,6 @@ h6 {
   margin-top: 0;
 }
 
-.custom404 {
+.error-page {
   text-align: center;
 }

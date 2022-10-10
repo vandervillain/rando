@@ -6,7 +6,6 @@ import MicControl from './micControl'
 import { useSessionContext } from '../../providers/sessionProvider'
 import { useRoomContext } from '../../providers/roomProvider'
 import defaultAvatar from '../../assets/images/avatar.png'
-import avatars from '../../assets/images/avatars'
 import './peerControl.css'
 
 type PeerControlProps = {
@@ -29,18 +28,16 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
   const stream = streams.find(s => s.id === peerId)
   const peer = peers.find(p => p.id === peerId)
 
-  if (!user || !room || !currUserPeer || !peer) return null
-
   const className = () => {
     let classes = ['peer-control']
-    if (peer.inCall) classes.push('in-call')
+    if (peer?.inCall) classes.push('in-call')
     if (isCurrUser) classes.push('current-user')
     return classes.join(' ')
   }
 
   const peerDisplayName = () => (
     <>
-      {peer.name} {isTest && <>({peer.id})</>}
+      {peer?.name} {isTest && <>({peer?.id})</>}
     </>
   )
 
@@ -51,14 +48,17 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
   }
 
   useEffect(() => {
-    if (peer.inCall && currUserPeer.inCall && stream) {
+    if (peer?.inCall && currUserPeer?.inCall && stream) {
       connectIsStreamingVolume(peer.id, setOutputting)
     }
     return () => {
+      if (!peer) return
       disconnectIsStreamingVolume(peer.id)
       setOutputting(false)
     }
-  }, [peer.inCall, stream])
+  }, [peer, stream])
+
+  if (!user || !room || !currUserPeer || !peer) return null
 
   return (
     <div className={className()} data-name={peer.name} data-incall={peer.inCall} key={peer.id}>
