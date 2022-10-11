@@ -1,6 +1,5 @@
 import React, { FunctionComponent, useCallback, useEffect, useMemo, useState } from 'react'
 import { AnalyserFormat, PeerStream, PeerStreamModel } from '../data/stream'
-import { UserSettings } from '../data/types'
 import { isTest } from '../helpers/development'
 import useWebRTC from '../hooks/useWebRTC'
 import { useSessionContext } from './sessionProvider'
@@ -190,12 +189,12 @@ export const StreamProvider: FunctionComponent<StreamManagerProps> = ({ children
   }, [])
 
   useEffect(() => {
-    console.debug('streamManager mount')
-
     return () => {
-      console.debug('streamManager unmount')
+      console.debug('streamProvider destroy')
+      webRTC.destroy()
+      for (const s of peerStreams) s.disconnect()
     }
-  })
+  }, [])
 
   const audios = useMemo(() => {
     console.debug('memoizing audios')

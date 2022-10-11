@@ -142,18 +142,6 @@ const useWebRTC = (relay: IRTCRelay, onTrack: (id: string, stream: MediaStream) 
     for (const r in connections) destroyConnection(r)
   }
 
-  useEffect(() => {
-    return destroy
-  }, [])
-
-  useEffect(() => {
-    console.debug('webRTC mount')
-
-    return () => {
-      console.debug('webRTC unmount')
-    }
-  })
-
   return {
     setLocalStream,
     offer,

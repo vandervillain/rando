@@ -15,31 +15,12 @@ namespace azure_function.Data
         private List<ActiveUser> activeUsers;
         private List<ActiveRoom> activeRooms;
 
-        // empty rooms expire in 5 min
-        private const int emptyRoomExpiration = 1000 * 60 * 5;
-        // user expire in 15 seconds
-        private const int userExpiration = 1000 * 15;
-
         public RoomManager(ILogger<RoomManager> logger)
         {
             logger.LogDebug("RoomManager()");
             log = logger;
             activeUsers = new List<ActiveUser>();
             activeRooms = new List<ActiveRoom>();
-
-            var timer1 = new Timer(_ =>
-            {
-                activeRooms.Where(r => r.DestroyBy != null && r.DestroyBy < DateTime.Now).ToList().ForEach(r =>
-          {
-              log.LogInformation($"destroying room {r.Name}");
-              activeRooms.Remove(r);
-          });
-                activeUsers.Where(u => u.DestroyBy != null && u.DestroyBy < DateTime.Now).ToList().ForEach(u =>
-          {
-              log.LogInformation($"destroying user {u.Name}");
-              activeUsers.Remove(u);
-          });
-            }, null, 0, userExpiration);
         }
 
         private string RandomId()
@@ -98,16 +79,6 @@ namespace azure_function.Data
             return user;
         }
 
-        public void DisconnectUser(string userId)
-        {
-            log.LogDebug($"DisconnectUser({userId})");
-            var user = GetUser(userId);
-            if (user == null) return;
-
-            user.DestroyBy = new DateTime().AddMilliseconds(userExpiration);
-            log.LogInformation($"{user.Name} ({user.Id}) disconnecting in {userExpiration}ms");
-        }
-
         public string AddActiveRoom(string userId, string roomName)
         {
             log.LogDebug($"AddActiveRoom({userId}, {roomName})");
@@ -137,9 +108,6 @@ namespace azure_function.Data
             if (user.RoomId == null) return user;
 
             var room = GetRoom(user.RoomId);
-            if (room != null && activeUsers.Where(u => u.RoomId == room.Id).Count() == 0)
-                room.DestroyBy = DateTime.Now.AddMilliseconds(emptyRoomExpiration);
-
             user.RoomId = null;
             log.LogInformation($"removed {user.Name} ({user.Id}) from room {room.Name}");
 

@@ -191,12 +191,11 @@ export const SignalRProvider: FunctionComponent = ({ children }) => {
   }, [user, initialized])
 
   useEffect(() => {
-    console.debug('signalRManager mount')
-
     return () => {
-      console.debug('signalRManager unmount')
+      console.debug('signalRProvider stop')
+      connection?.stop()
     }
-  })
+  }, [])
 
   return forcedOut ? (
     <ForcedOut />

@@ -27,7 +27,6 @@ export class PeerStream {
   public id: string
   public isConnected: boolean
   public isOutputting: boolean
-  public destroy = false
   /** stream that gets sent to peers */
   public postStream?: MediaStream
   /** raw stream, pre-nodes */
@@ -153,7 +152,6 @@ export class PeerStream {
     this.muteNode?.disconnect()
     this.audioCtx.close()
     this.isOutputting = false
-    this.destroy = true
   }
   getGain = () => this.gain
   setGain = (percent: number) => {

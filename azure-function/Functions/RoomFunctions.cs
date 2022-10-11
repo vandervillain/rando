@@ -91,7 +91,7 @@ namespace azure_function.Functions
                 catch (Exception e)
                 {
                     // doesn't matter, probably already removed by disconnect/refresh
-                    _ = e.ToString();
+                    log.LogDebug($"RemoveFromGroupAsync exception: {e.Message}");
                 }
 
                 roomMgr.UserLeaveRoom(userId);
@@ -118,7 +118,6 @@ namespace azure_function.Functions
             {
                 await ToUser(existingUser, ClientEvent.forceDisconnect);
                 await ExitRoom(userId, null);
-                roomMgr.DisconnectUser(userId);
             }
             return Negotiate(userId);
         }
@@ -136,18 +135,16 @@ namespace azure_function.Functions
         }
 
         [FunctionName(nameof(OnDisconnected))]
-        public void OnDisconnected([SignalRTrigger] InvocationContext context)
+        public async Task OnDisconnected([SignalRTrigger] InvocationContext context)
         {
             log.LogDebug($"{nameof(OnDisconnected)}: {context.UserId}, {context.ConnectionId}");
-
-            ExitRoom(context.UserId, context.ConnectionId).GetAwaiter().GetResult();
-            roomMgr.DisconnectUser(context.UserId);
+            await ExitRoom(context.UserId, context.ConnectionId);
         }
 
         [FunctionName(nameof(SetUserProfile))]
         public async Task SetUserProfile([SignalRTrigger] InvocationContext context, string userName, string avatar = null, string sound = null)
         {
-            log.LogDebug($"{nameof(SetUserProfile)}: {context.UserId}, {context.ConnectionId}");
+            log.LogDebug($"{nameof(SetUserProfile)}: {context.UserId}, {userName}, {avatar}, {sound}");
 
             if (!string.IsNullOrWhiteSpace(userName))
             {
@@ -160,7 +157,7 @@ namespace azure_function.Functions
         [FunctionName(nameof(CreateRoom))]
         public async Task<string> CreateRoom([SignalRTrigger] InvocationContext context, string roomName)
         {
-            log.LogDebug($"{nameof(CreateRoom)}: {context.UserId}, {context.ConnectionId}");
+            log.LogDebug($"{nameof(CreateRoom)}: {context.UserId}, ${roomName}");
 
             await ExitRoom(context.UserId, context.ConnectionId);
 
@@ -173,7 +170,7 @@ namespace azure_function.Functions
         [FunctionName(nameof(JoinRoom))]
         public async Task<object> JoinRoom([SignalRTrigger] InvocationContext context, string roomId)
         {
-            log.LogDebug($"{nameof(JoinRoom)}: {context.UserId}, {context.ConnectionId}");
+            log.LogDebug($"{nameof(JoinRoom)}: {context.UserId}, ${roomId}");
 
             await ExitRoom(context.UserId, context.ConnectionId);
 
