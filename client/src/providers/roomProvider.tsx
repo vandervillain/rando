@@ -56,8 +56,7 @@ export const RoomProvider: FunctionComponent<RoomProviderProps> = ({ joinRoomId 
     // if current user is in call too, then start up connection workflow
     const thisUser = peers.find(p => p.id === user!.id)
     if (thisUser?.inCall) {
-      if (peer.id !== thisUser.id)
-        await requestStream(peer.id)
+      if (peer.id !== thisUser.id) await requestStream(peer.id)
       audio.playOn(peer.id, peer.sound as SoundType)
     }
     setRoomPeers(peers)
@@ -118,7 +117,10 @@ export const RoomProvider: FunctionComponent<RoomProviderProps> = ({ joinRoomId 
       signalR.joinRoom(joinRoomId).then(roomInfo => {
         console.log('received room info:')
         console.log(roomInfo)
-        if (!roomInfo) navigate('/404')
+        if (!roomInfo) {
+          navigate('/404')
+          return
+        }
         setRoom(roomInfo.room)
         setRoomPeers(roomInfo.peers)
       })

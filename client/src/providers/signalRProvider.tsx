@@ -190,13 +190,6 @@ export const SignalRProvider: FunctionComponent = ({ children }) => {
     if (user && !initialized && !isConnected()) connect(user)
   }, [user, initialized])
 
-  useEffect(() => {
-    return () => {
-      console.debug('signalRProvider stop')
-      connection?.stop()
-    }
-  }, [])
-
   return forcedOut ? (
     <ForcedOut />
   ) : (
