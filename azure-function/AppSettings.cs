@@ -7,6 +7,6 @@ namespace azure_function
 {
     public class AppSettings
     {
-        
+        public string AzureRedisCacheConnectionString { get; set; }
     }
 }

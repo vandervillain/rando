@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using azure_function.Cache;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -11,16 +12,13 @@ namespace azure_function.Data
 {
     public class RoomManager
     {
-        protected ILogger<RoomManager> log;
-        private List<ActiveUser> activeUsers;
-        private List<ActiveRoom> activeRooms;
+        private readonly RedisCache _cache;
+        private readonly ILogger<RoomManager> _log;
 
-        public RoomManager(ILogger<RoomManager> logger)
+        public RoomManager(RedisCache cache, ILogger<RoomManager> logger)
         {
-            logger.LogDebug("RoomManager()");
-            log = logger;
-            activeUsers = new List<ActiveUser>();
-            activeRooms = new List<ActiveRoom>();
+            _cache = cache;
+            _log = logger;
         }
 
         private string RandomId()
@@ -37,174 +35,188 @@ namespace azure_function.Data
             return builder.ToString().ToLower();
         }
 
-        public ActiveUser GetUser(string userId)
+        public async Task<User> GetUser(string userId)
         {
-            log.LogDebug($"searching for user by id {userId} in list {string.Join(", ", activeUsers.Select(u => u.Id))}");
-            var user = activeUsers.FirstOrDefault(u => u.Id == userId);
-            if (user == null) log.LogWarning($"user {user} not found in active list");
-            return user;
-        }
-
-        public ActiveRoom GetRoom(string roomId)
-        {
-            log.LogDebug($"searching for room by id {roomId} in list {string.Join(", ", activeRooms.Select(u => u.Id))}");
-            var room = activeRooms.FirstOrDefault(r => r.Id == roomId);
-            if (room == null) log.LogWarning($"room {roomId} not found in active list");
-            return room;
-        }
-
-        public List<ActiveUser> GetUsersInRoom(string roomId)
-        {
-            return activeUsers.Where(u => u.RoomId == roomId).ToList();
-        }
-
-        public ActiveUser ReconnectOrAddUser(string userId)
-        {
-            log.LogDebug($"ReconnectOrAddUser({userId})");
-            var user = GetUser(userId);
+            _log.LogTrace($"GetUser({userId})");
+            var user = await _cache.GetUser(userId);
             if (user == null)
             {
-                user = new ActiveUser()
+                _log.LogWarning($"user {user} not found");
+                return null;
+            }
+            return JsonConvert.DeserializeObject<User>(user);
+        }
+
+        public async Task<Room> GetRoom(string roomId)
+        {
+            _log.LogTrace($"GetRoom({roomId})");
+            string room = await _cache.GetRoom(roomId);
+            if (room == null)
+            {
+                _log.LogWarning($"room {room} not found");
+                return null;
+            }
+            return JsonConvert.DeserializeObject<Room>(room);
+        }
+
+        public async Task SaveUser(User user)
+        {
+            _log.LogTrace($"SaveUser({user.Id})");
+            await _cache.SetUser(user.Id, JsonConvert.SerializeObject(user));
+        }
+
+        public async Task SaveRoom(Room room)
+        {
+            _log.LogTrace($"SaveRoom({room.Id})");
+            await _cache.SetRoom(room.Id, JsonConvert.SerializeObject(room));
+        }
+
+        private async Task AddOrUpdateUserForRoom(User user, Room room)
+        {
+            _log.LogTrace($"AddUserToRoom({user.Id}, {user.RoomId})");
+            user.RoomId = room.Id;
+            await SaveUser(user);
+
+            // add/update user in room
+            room.Users = room.Users.Where(u => u.Id != user.Id).Concat(new[] { user });
+            await SaveRoom(room);
+            _log.LogInformation($"added (or updated) user {user.Id} to room {room.Id}");
+        }
+
+        private async Task RemoveUserFromRoom(User user, Room room)
+        {
+            _log.LogTrace($"RemoveUserFromRoomUserList({user.Id}, {user.RoomId})");
+            user.RoomId = room.Id;
+            user.InCall = false;
+            await SaveUser(user);
+
+            room.Users = room.Users.Where(u => u.Id != user.Id);
+            await SaveRoom(room);
+            _log.LogInformation($"removed user {user.Id} from room {room.Id}");
+        }
+
+        public async Task<User> ReconnectOrAddUser(string userId)
+        {
+            _log.LogTrace($"ReconnectOrAddUser({userId})");
+            var user = await GetUser(userId);
+            if (user == null)
+            {
+                user = new User()
                 {
                     Id = userId
                 };
-                activeUsers.Add(user);
-                log.LogInformation($"Added user {userId}");
-            }
-            else
-            {
-                user.DestroyBy = null;
-                log.LogDebug($"user {user.Name} ({user.Id}) will not disconnect");
+                await SaveUser(user);
+                _log.LogInformation($"Added user {userId}");
             }
             return user;
         }
 
-        public string AddActiveRoom(string userId, string roomName)
+        public async Task<string> AddRoom(string userId, string roomName)
         {
-            log.LogDebug($"AddActiveRoom({userId}, {roomName})");
-            var user = GetUser(userId);
-            if (user == null) return null;
+            _log.LogTrace($"AddRoom({userId}, {roomName})");
 
             string id = RandomId();
-            while (activeRooms.Any(r => r.Id == id)) id = RandomId();
+            while ((await GetRoom(id)) != null) id = RandomId();
 
-            activeRooms.Add(new ActiveRoom()
+            var room = new Room()
             {
                 Id = id,
                 Name = roomName,
-                CreatedBy = user.Id
-            });
-            log.LogInformation($"added new room {roomName} with id {id}");
+                CreatedBy = userId
+            };
+            await SaveRoom(room);
+            _log.LogInformation($"added new room {roomName} with id {id}");
             return id;
         }
 
-        public ActiveUser UserLeaveRoom(string userId)
+        public async Task UserLeaveRoom(string userId)
         {
-            log.LogDebug($"UserLeaveRoom({userId})");
-            var user = GetUser(userId);
-            if (user == null) return null;
+            _log.LogTrace($"UserLeaveRoom({userId})");
+            User user = await GetUser(userId);
+            Room room = await GetRoom(user?.RoomId);
+            if (user == null || room == null) return;
+
+            await RemoveUserFromRoom(user, room);
+            _log.LogInformation($"{user.Id} left room {user.RoomId}");
+        }
+
+        public async Task UserJoinRoom(string userId, string roomId)
+        {
+            _log.LogTrace($"UserJoinRoom({userId})");
+            User user = await GetUser(userId);
+            Room room = await GetRoom(roomId);
+            if (user == null || room == null) return;
+
+            await AddOrUpdateUserForRoom(user, room);
+            _log.LogInformation($"{user.Id} joined room {user.RoomId}");
+        }
+
+        public async Task UserJoinCall(User user, Room room)
+        {
+            _log.LogTrace($"UserJoinCall({user?.Id}, {room?.Id})");
+            if (user == null || room == null) return;
+
+            user.InCall = true;
+            await AddOrUpdateUserForRoom(user, room);
+            _log.LogInformation($"{user.Id} joined call in room {user.RoomId}");
+        }
+
+        public async Task UserLeaveCall(User user, Room room)
+        {
+            _log.LogTrace($"UserLeaveCall({user?.Id}, {room?.Id})");
+            if (user == null || room == null) return;
 
             user.InCall = false;
-            if (user.RoomId == null) return user;
-
-            var room = GetRoom(user.RoomId);
-            user.RoomId = null;
-            log.LogInformation($"removed {user.Name} ({user.Id}) from room {room.Name}");
-
-            return user;
+            await AddOrUpdateUserForRoom(user, room);
+            _log.LogInformation($"{user.Id} left call in room {user.RoomId}");
         }
 
-        public ActiveUser UserJoinRoom(string userId, string roomId)
+        public async Task<User> SetUserProfile(string userId, string userName, string avatar, string sound)
         {
-            log.LogDebug($"UserJoinRoom({userId}, {roomId})");
-            var user = GetUser(userId);
-            var room = GetRoom(roomId);
-
-            if (user == null || room == null) return null;
-
-            user.RoomId = room.Id;
-            room.DestroyBy = null;
-            log.LogInformation($"{user.Name} ({user.Id}) joined room {room.Name}");
-            return user;
-        }
-
-        public ActiveUser UserJoinCall(string userId)
-        {
-            log.LogDebug($"UserJoinCall({userId})");
-            var user = GetUser(userId);
-            if (user != null)
-            {
-                user.InCall = true;
-                log.LogInformation($"{user.Name} ({user.Id}) joined call in room {user.RoomId}");
-            }
-            else log.LogWarning($"user {userId} not found in active users");
-            return user;
-        }
-
-        public ActiveUser UserLeaveCall(string userId)
-        {
-            log.LogDebug($"UserLeaveCall({userId})");
-            var user = GetUser(userId);
-            if (user != null)
-            {
-                user.InCall = false;
-                log.LogInformation($"{user.Name} ({user.Id}) left call in room {user.RoomId}");
-            }
-            else log.LogWarning($"user {userId} not found in active users");
-            return user;
-        }
-
-        public ActiveUser SetUserProfile(string userId, string userName, string avatar, string sound)
-        {
-            log.LogDebug($"SetUserProfile({userId}, {userName})");
-            var user = GetUser(userId);
+            _log.LogTrace($"SetUserProfile({userId}, {userName})");
+            User user = await GetUser(userId);
             if (user == null) return null;
 
             user.Name = userName;
             user.Avatar = avatar;
             user.Sound = sound;
-            log.LogInformation($"{user.Id} set profile to {userName} {avatar} {sound}");
+
+            await SaveUser(user);
+
+            if (user.RoomId != null)
+            {
+                Room room = await GetRoom(user.RoomId);
+                await AddOrUpdateUserForRoom(user, room);
+            }
+            _log.LogInformation($"{user.Id} set profile to {userName} {avatar} {sound}");
 
             return user;
         }
-    }
 
-    public class ActiveUser
-    {
-        [JsonProperty("id")]
-        public string Id { get; set; }
+        public async Task ValidateUsersInSameRoom(IEnumerable<string> userIds)
+        {
+            List<User> users = new List<User>();
+            foreach (var id in userIds)
+            {
+                // make sure user exists
+                User user = await GetUser(id);
+                if (user == null)
+                {
+                    string err = $"ValidateUsersInSameRoom: user {id} not found";
+                    _log.LogError(err);
+                    throw new Exception(err);
+                }
+                users.Add(user);
 
-        [JsonProperty("name")]
-        public string Name { get; set; }
-
-        [JsonProperty("roomId")]
-        public string RoomId { get; set; }
-
-        [JsonProperty("inCall")]
-        public bool InCall { get; set; }
-
-        [JsonProperty("avatar")]
-        public string Avatar { get; set; }
-
-        [JsonProperty("sound")]
-        public string Sound { get; set; }
-
-        [JsonIgnore]
-        public DateTime? DestroyBy { get; set; }
-    }
-
-    public class ActiveRoom
-    {
-        [JsonProperty("id")]
-        public string Id { get; set; }
-
-        [JsonProperty("name")]
-        public string Name { get; set; }
-
-        [JsonIgnore]
-        public string CreatedBy { get; set; }
-
-        [JsonIgnore]
-        public DateTime? DestroyBy { get; set; }
+                // make sure this user is in same room as all other users
+                User wrongRoomUser = users.FirstOrDefault(u => u.RoomId != user.RoomId);
+                if (wrongRoomUser != null)
+                {
+                    string err = $"ValidateUsersInSameRoom: user {user.Id} is in room {user.RoomId} but user {wrongRoomUser.Id} user is in room {wrongRoomUser.RoomId}";
+                    _log.LogError(err);
+                    throw new Exception(err);
+                }
+            }
+        }
     }
 }

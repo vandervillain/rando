@@ -11,49 +11,44 @@ using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using Microsoft.Azure.WebJobs.Extensions.SignalRService;
 using System.Linq;
+using azure_function.Cache;
 
 namespace azure_function.Functions
 {
     public class RoomFunctions : ServerlessHub
     {
-        private readonly RoomManager roomMgr;
-        private readonly ILogger<RoomFunctions> log;
+        private readonly RoomManager _roomMgr;
+        private readonly ILogger<RoomFunctions> _logger;
 
         public RoomFunctions(RoomManager mgr, ILogger<RoomFunctions> logger)
         {
-            roomMgr = mgr;
-            log = logger;
+            _roomMgr = mgr;
+            _logger = logger;
         }
 
         [FunctionName(nameof(Login))]
         public async Task<IActionResult> Login([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequest req,
         [SignalR(HubName = nameof(RoomFunctions))] IAsyncCollector<SignalRMessage> signalRMessages)
         {
-            log.LogDebug($"{nameof(Login)}: {req.GetDisplayUrl()}");
+            _logger.LogDebug($"{nameof(Login)}: {req.GetDisplayUrl()}");
             bool authorized = true;
             if (!authorized)
             {
-                log.LogError("Unauthorized Request");
+                _logger.LogError("Unauthorized Request");
                 return new UnauthorizedResult();
             }
 
             using (StreamReader streamReader = new StreamReader(req.Body))
             {
                 string requestBody = await streamReader.ReadToEndAsync();
-                ActiveUser user = await Task.Run(() => JsonConvert.DeserializeObject<ActiveUser>(requestBody));
+                User user = await Task.Run(() => JsonConvert.DeserializeObject<User>(requestBody));
                 return new OkObjectResult(user);
             }
         }
 
         private async Task ToUser(string userId, ClientEvent eventType, params object[] args)
         {
-            await ToUser(roomMgr.GetUser(userId), eventType, args);
-        }
-
-        private async Task ToUser(ActiveUser user, ClientEvent eventType, params object[] args)
-        {
-            if (user != null)
-                await Clients.User(user.Id).SendCoreAsync(eventType.ToString(), args);
+            await Clients.User(userId).SendCoreAsync(eventType.ToString(), args);
         }
 
         private async Task ToRoom(string roomId, ClientEvent eventType, params object[] args)
@@ -63,224 +58,164 @@ namespace azure_function.Functions
 
         private async Task ToPeers(string userId, string connectionId, ClientEvent eventType, params object[] args)
         {
-            await ToPeers(roomMgr.GetUser(userId), connectionId, eventType, args);
+            User user = await _roomMgr.GetUser(userId);
+            await ToPeers(user, connectionId, eventType, args);
         }
 
-        private async Task ToPeers(ActiveUser user, string connectionId, ClientEvent eventType, params object[] args)
+        private async Task ToPeers(User user, string connectionId, ClientEvent eventType, params object[] args)
         {
-            if (user != null && user.RoomId != null)
-                await Clients.GroupExcept(user.RoomId, new string[] { connectionId }).SendCoreAsync(eventType.ToString(), args);
+            if (user == null || user.RoomId == null) return;
+            await Clients.GroupExcept(user.RoomId, new string[] { connectionId }).SendCoreAsync(eventType.ToString(), args);
         }
 
-        private async Task ExitRoom(string userId, string connectionId)
+        private async Task ExitRoom(string userId)
         {
-            log.LogDebug($"ExitRoom({userId}, {connectionId})");
-            try
-            {
-                var user = roomMgr.GetUser(userId);
+            _logger.LogDebug($"ExitRoom({userId})");
 
-                if (user == null || user.RoomId == null) return;
+            string roomId = (await _roomMgr.GetUser(userId))?.RoomId;
+            if (roomId == null) return;
 
-                string roomId = user.RoomId;
-                log.LogInformation($"{userId} exiting room {roomId}");
+            await _roomMgr.UserLeaveRoom(userId);
+            Room room = await _roomMgr.GetRoom(roomId);
 
-                try
-                {
-                    await Groups.RemoveFromGroupAsync(userId, roomId);
-                }
-                catch (Exception e)
-                {
-                    // doesn't matter, probably already removed by disconnect/refresh
-                    log.LogDebug($"RemoveFromGroupAsync exception: {e.Message}");
-                }
-
-                roomMgr.UserLeaveRoom(userId);
-                log.LogInformation($"removed {userId} from room {roomId}");
-
-                // tell former peers that user left
-                var usersInRoom = roomMgr.GetUsersInRoom(roomId);
-                log.LogInformation($"telling peers {string.Join(',', usersInRoom.Select(u => u.Name))} that {userId} left room {roomId}");
-                await ToRoom(roomId, ClientEvent.peerLeftRoom, user, usersInRoom);
-            }
-            catch (Exception e)
-            {
-                log.LogError(e.Message);
-            }
+            // tell former peers that user left
+            _logger.LogInformation($"telling peers {string.Join(',', room.Users.Select(u => u.Id))} that {userId} left room {room.Id}");
+            await ToRoom(room.Id, ClientEvent.peerLeftRoom, userId, room.Users);
         }
 
         [FunctionName(nameof(Negotiate))]
         public async Task<SignalRConnectionInfo> Negotiate([HttpTrigger(AuthorizationLevel.Anonymous)] HttpRequest req)
         {
-            log.LogDebug($"{req.Method} {req.GetDisplayUrl()}");
+            _logger.LogDebug($"{req.Method} {req.GetDisplayUrl()}");
             string userId = req.Headers["x-ms-signalr-user-id"];
-            var existingUser = roomMgr.GetUser(userId);
-            if (existingUser != null)
-            {
-                await ToUser(existingUser, ClientEvent.forceDisconnect);
-                await ExitRoom(userId, null);
-            }
+            if (userId != null) await ToUser(userId, ClientEvent.forceDisconnect);
             return Negotiate(userId);
         }
 
         [FunctionName(nameof(OnConnected))]
-        public void OnConnected([SignalRTrigger] InvocationContext context)
+        public async Task OnConnected([SignalRTrigger] InvocationContext context)
         {
-            roomMgr.ReconnectOrAddUser(context.UserId);
+            await _roomMgr.ReconnectOrAddUser(context.UserId);
         }
 
         [FunctionName(nameof(OnReconnected))]
-        public void OnReconnected([SignalRTrigger] InvocationContext context)
+        public async Task OnReconnected([SignalRTrigger] InvocationContext context)
         {
-            roomMgr.ReconnectOrAddUser(context.UserId);
+            await _roomMgr.ReconnectOrAddUser(context.UserId);
         }
 
         [FunctionName(nameof(OnDisconnected))]
         public async Task OnDisconnected([SignalRTrigger] InvocationContext context)
         {
-            log.LogDebug($"{nameof(OnDisconnected)}: {context.UserId}, {context.ConnectionId}");
-            await ExitRoom(context.UserId, context.ConnectionId);
+            _logger.LogDebug($"{nameof(OnDisconnected)}: {context.UserId}, {context.ConnectionId}");
+            await ExitRoom(context.UserId);
         }
 
         [FunctionName(nameof(SetUserProfile))]
         public async Task SetUserProfile([SignalRTrigger] InvocationContext context, string userName, string avatar = null, string sound = null)
         {
-            log.LogDebug($"{nameof(SetUserProfile)}: {context.UserId}, {userName}, {avatar}, {sound}");
+            _logger.LogDebug($"{nameof(SetUserProfile)}: {context.UserId}, {userName}, {avatar}, {sound}");
 
-            if (!string.IsNullOrWhiteSpace(userName))
-            {
-                var user = roomMgr.SetUserProfile(context.UserId, userName, avatar, sound);
-                if (user.RoomId != null)
-                    await ToRoom(user.RoomId, ClientEvent.peerChangedName, user);
-            }
+            User user = await _roomMgr.SetUserProfile(context.UserId, userName, avatar, sound);
+            if (user.RoomId != null)
+                await ToRoom(user.RoomId, ClientEvent.peerChangedName, user);
         }
 
         [FunctionName(nameof(CreateRoom))]
         public async Task<string> CreateRoom([SignalRTrigger] InvocationContext context, string roomName)
         {
-            log.LogDebug($"{nameof(CreateRoom)}: {context.UserId}, ${roomName}");
+            _logger.LogDebug($"{nameof(CreateRoom)}: {context.UserId}, {roomName}");
 
-            await ExitRoom(context.UserId, context.ConnectionId);
-
-            if (string.IsNullOrWhiteSpace(roomName)) return null;
-
-            var roomId = roomMgr.AddActiveRoom(context.UserId, roomName);
+            await ExitRoom(context.UserId);
+            var roomId = await _roomMgr.AddRoom(context.UserId, roomName);
             return roomId;
         }
 
         [FunctionName(nameof(JoinRoom))]
         public async Task<object> JoinRoom([SignalRTrigger] InvocationContext context, string roomId)
         {
-            log.LogDebug($"{nameof(JoinRoom)}: {context.UserId}, ${roomId}");
+            _logger.LogDebug($"{nameof(JoinRoom)}: {context.UserId}, {roomId}");
 
-            await ExitRoom(context.UserId, context.ConnectionId);
+            await ExitRoom(context.UserId);
+            await _roomMgr.UserJoinRoom(context.UserId, roomId);
 
-            if (string.IsNullOrWhiteSpace(roomId)) return null;
+            User user = await _roomMgr.GetUser(context.UserId);
+            Room room = await _roomMgr.GetRoom(roomId);
 
-            var room = roomMgr.GetRoom(roomId);
-            log.LogDebug($"got room {roomId}");
-            var user = roomMgr.UserJoinRoom(context.UserId, roomId);
-
-            if (user == null) return null;
-
-            var usersInRoom = roomMgr.GetUsersInRoom(roomId);
-            log.LogInformation($"telling peers {string.Join(',', usersInRoom.Select(u => u.Name))} that {user.Id} joined room {roomId}");
+            _logger.LogInformation($"telling peers {string.Join(',', room.Users.Select(u => u.Id))} that {user.Id} joined room {roomId}");
             await Groups.AddToGroupAsync(context.ConnectionId, roomId);
-            await ToPeers(user.Id, context.ConnectionId, ClientEvent.peerJoinedRoom, user, usersInRoom);
+            await ToPeers(user.Id, context.ConnectionId, ClientEvent.peerJoinedRoom, user, room.Users);
             return new
             {
                 room = room,
-                peers = usersInRoom
+                peers = room.Users
             };
         }
 
         [FunctionName(nameof(JoinCall))]
         public async Task JoinCall([SignalRTrigger] InvocationContext context)
         {
-            log.LogDebug($"{nameof(JoinCall)}: {context.UserId}, {context.ConnectionId}");
+            _logger.LogDebug($"{nameof(JoinCall)}: {context.UserId}, {context.ConnectionId}");
 
-            var user = roomMgr.UserJoinCall(context.UserId);
-            if (user != null && user.RoomId != null)
-            {
-                var usersInRoom = roomMgr.GetUsersInRoom(user.RoomId);
-                await ToRoom(user.RoomId, ClientEvent.peerJoiningCall, user, usersInRoom);
-            }
+            User user = await _roomMgr.GetUser(context.UserId);
+            Room room = await _roomMgr.GetRoom(user?.RoomId);
+            if (user == null || room == null) return;
+
+            await _roomMgr.UserJoinCall(user, room);
+
+            await ToRoom(user.RoomId, ClientEvent.peerJoiningCall, user, room.Users);
         }
 
         [FunctionName(nameof(LeaveRoom))]
         public async Task LeaveRoom([SignalRTrigger] InvocationContext context)
         {
-            log.LogDebug($"{nameof(LeaveRoom)}: {context.UserId}, {context.ConnectionId}");
-            await ExitRoom(context.UserId, context.ConnectionId);
+            _logger.LogDebug($"{nameof(LeaveRoom)}: {context.UserId}, {context.ConnectionId}");
+            await ExitRoom(context.UserId);
         }
 
         [FunctionName(nameof(LeaveCall))]
         public async Task LeaveCall([SignalRTrigger] InvocationContext context)
         {
-            log.LogDebug($"{nameof(LeaveRoom)}: {context.UserId}, {context.ConnectionId}");
-            var user = roomMgr.GetUser(context.UserId);
-            if (user != null && user.RoomId != null)
-            {
-                roomMgr.UserLeaveCall(context.UserId);
-                var usersInRoom = roomMgr.GetUsersInRoom(user.RoomId);
-                await ToRoom(user.RoomId, ClientEvent.peerLeftCall, user, usersInRoom);
-            }
+            _logger.LogDebug($"{nameof(LeaveRoom)}: {context.UserId}, {context.ConnectionId}");
+            User user = await _roomMgr.GetUser(context.UserId);
+            Room room = await _roomMgr.GetRoom(user?.RoomId);
+            if (user == null || room == null) return;
+
+            await _roomMgr.UserLeaveCall(user, room);
+            await ToRoom(user.RoomId, ClientEvent.peerLeftCall, user, room.Users);
         }
 
         [FunctionName(nameof(Offer))]
         public async Task Offer([SignalRTrigger] InvocationContext context, string peerId, RTCSessionDescriptionInit offer)
         {
-            log.LogDebug($"{nameof(Offer)}: {context.UserId}, {context.ConnectionId}");
-            if (!string.IsNullOrWhiteSpace(peerId) && offer != null)
-            {
-                var user = roomMgr.GetUser(context.UserId);
-                var peer = roomMgr.GetUser(peerId);
-                if (user == null) log.LogError("user not found");
-                else if (peer == null) log.LogError("peer not found");
-                else if (user.RoomId != peer.RoomId) log.LogError($"user is in room {user.RoomId} but peer is in room {peer.RoomId}");
-                else
-                {
-                    log.LogInformation($"user {user.Id} sending an offer to peer {peer.Id}");
-                    await ToUser(peer.Id, ClientEvent.offer, user.Id, offer);
-                }
-            }
+            _logger.LogDebug($"{nameof(Offer)}: {context.UserId}, {context.ConnectionId}");
+
+            await _roomMgr.ValidateUsersInSameRoom(new[] { context.UserId, peerId });
+
+            _logger.LogInformation($"user {context.UserId} sending an offer to peer {peerId}");
+            await ToUser(peerId, ClientEvent.offer, context.UserId, offer);
         }
 
         [FunctionName(nameof(Answer))]
         public async Task Answer([SignalRTrigger] InvocationContext context, string peerId, RTCSessionDescriptionInit answer)
         {
-            log.LogDebug($"{nameof(Answer)}: {context.UserId}, {context.ConnectionId}");
-            if (!string.IsNullOrWhiteSpace(peerId) && answer != null)
-            {
-                var user = roomMgr.GetUser(context.UserId);
-                var peer = roomMgr.GetUser(peerId);
-                if (user == null) log.LogError("user not found");
-                else if (peer == null) log.LogError("peer not found");
-                else if (user.RoomId != peer.RoomId) log.LogError($"user is in room {user.RoomId} but peer is in room {peer.RoomId}");
-                else
-                {
-                    log.LogInformation($"user {user.Id} sending an answer to peer {peer.Id}");
-                    await ToUser(peer.Id, ClientEvent.answer, user.Id, answer);
-                }
-            }
+            _logger.LogDebug($"{nameof(Answer)}: {context.UserId}, {context.ConnectionId}");
+
+            await _roomMgr.ValidateUsersInSameRoom(new[] { context.UserId, peerId });
+
+            _logger.LogInformation($"user {context.UserId} sending an answer to peer {peerId}");
+            await ToUser(peerId, ClientEvent.answer, context.UserId, answer);
         }
 
         [FunctionName(nameof(Candidate))]
         public async Task Candidate([SignalRTrigger] InvocationContext context, string peerId, RTCIceCandidate candidate)
         {
-            log.LogDebug($"{nameof(Candidate)}: {context.UserId}, {context.ConnectionId}");
-            if (!string.IsNullOrWhiteSpace(peerId) && candidate != null)
-            {
-                var user = roomMgr.GetUser(context.UserId);
-                var peer = roomMgr.GetUser(peerId);
-                if (user == null) log.LogError("user not found");
-                else if (peer == null) log.LogError("peer not found");
-                else if (user.RoomId != peer.RoomId) log.LogError($"user is in room {user.RoomId} but peer is in room {peer.RoomId}");
-                else
-                {
-                    log.LogInformation($"user {user.Id} sending a candidate to peer {peer.Id}");
-                    await ToUser(peer.Id, ClientEvent.candidate, user.Id, candidate);
-                }
-            }
+            _logger.LogDebug($"{nameof(Candidate)}: {context.UserId}, {context.ConnectionId}");
+
+            await _roomMgr.ValidateUsersInSameRoom(new[] { context.UserId, peerId });
+
+            _logger.LogInformation($"user {context.UserId} sending a candidate to peer {peerId}");
+            await ToUser(peerId, ClientEvent.candidate, context.UserId, candidate);
         }
 
         public enum ClientEvent

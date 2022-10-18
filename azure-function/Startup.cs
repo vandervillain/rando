@@ -4,40 +4,42 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Configuration;
 using azure_function.Data;
+using azure_function.Cache;
 
 [assembly: FunctionsStartup(typeof(azure_function.Startup))]
 namespace azure_function
 {
-  public class Startup : FunctionsStartup
-  {
-    public IConfiguration Configuration { get; protected set; }
-
-    public override void Configure(IFunctionsHostBuilder builder)
+    public class Startup : FunctionsStartup
     {
-      InitializeConfiguration(builder);
+        public IConfiguration Configuration { get; protected set; }
 
-      builder.Services.AddLogging();
+        public override void Configure(IFunctionsHostBuilder builder)
+        {
+            InitializeConfiguration(builder);
 
-      builder.Services.AddHttpClient();
+            builder.Services.AddLogging();
 
-      AppSettings appSettings = Configuration.Get<AppSettings>();
-      builder.Services.AddSingleton(appSettings);
+            builder.Services.AddHttpClient();
 
-      builder.Services.AddSingleton<RoomManager>();
+            AppSettings appSettings = Configuration.Get<AppSettings>();
+            builder.Services.AddSingleton(appSettings);
+
+            builder.Services.AddSingleton<RedisCache>();
+            builder.Services.AddSingleton<RoomManager>();
+        }
+
+        protected virtual void InitializeConfiguration(IFunctionsHostBuilder builder)
+        {
+            var executionContextOptions = builder
+                .Services
+                .BuildServiceProvider()
+                .GetService<IOptions<ExecutionContextOptions>>()
+                .Value;
+
+            Configuration = new ConfigurationBuilder()
+                .SetBasePath(executionContextOptions.AppDirectory)
+                .AddEnvironmentVariables()
+                .Build();
+        }
     }
-
-    protected virtual void InitializeConfiguration(IFunctionsHostBuilder builder)
-    {
-      var executionContextOptions = builder
-          .Services
-          .BuildServiceProvider()
-          .GetService<IOptions<ExecutionContextOptions>>()
-          .Value;
-
-      Configuration = new ConfigurationBuilder()
-          .SetBasePath(executionContextOptions.AppDirectory)
-          .AddEnvironmentVariables()
-          .Build();
-    }
-  }
 }
