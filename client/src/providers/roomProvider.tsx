@@ -1,4 +1,4 @@
-import React, { FunctionComponent, useEffect, useState } from 'react'
+import React, { FunctionComponent, useEffect, useMemo, useState } from 'react'
 import { RoomControl } from '../components/room'
 import { useStreamContext } from './streamProvider'
 import { Room, RoomPeer } from '../data/types'
@@ -124,11 +124,13 @@ export const RoomProvider: FunctionComponent<RoomProviderProps> = ({ joinRoomId 
     }
   }, [])
 
+  const currUserPeer = useMemo(() => room?.users.find(p => p.id === user!.id), [room])
+
   return room ? (
     <Context.Provider
       value={{
         room,
-        currUserPeer: room.users.find(p => p.id === user!.id),
+        currUserPeer,
       }}
     >
       <RoomControl joinCall={joinRoomCall} leaveCall={leaveRoomCall} />

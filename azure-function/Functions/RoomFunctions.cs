@@ -148,10 +148,7 @@ namespace azure_function.Functions
             _logger.LogInformation($"telling peers {string.Join(',', room.Users.Where(u => u.Id != user.Id).Select(u => u.Id))} that {user.Id} joined room {roomId}");
             await Groups.AddToGroupAsync(context.ConnectionId, roomId);
             await ToPeers(user.Id, context.ConnectionId, ClientEvent.peerJoinedRoom, user, room);
-            return new
-            {
-                room = room
-            };
+            return room;
         }
 
         [FunctionName(nameof(JoinCall))]
