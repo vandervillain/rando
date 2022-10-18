@@ -26,4 +26,5 @@ export type RoomPeer = {
 export type Room = {
   id: string
   name: string
+  users: RoomPeer[]
 }

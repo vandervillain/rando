@@ -80,7 +80,7 @@ namespace azure_function.Functions
 
             // tell former peers that user left
             _logger.LogInformation($"telling peers {string.Join(',', room.Users.Select(u => u.Id))} that {userId} left room {room.Id}");
-            await ToRoom(room.Id, ClientEvent.peerLeftRoom, userId, room.Users);
+            await ToRoom(room.Id, ClientEvent.peerLeftRoom, userId, room);
         }
 
         [FunctionName(nameof(Negotiate))]
@@ -118,7 +118,10 @@ namespace azure_function.Functions
 
             User user = await _roomMgr.SetUserProfile(context.UserId, userName, avatar, sound);
             if (user.RoomId != null)
-                await ToRoom(user.RoomId, ClientEvent.peerChangedName, user);
+            {
+                Room room = await _roomMgr.GetRoom(user.RoomId);
+                await ToRoom(user.RoomId, ClientEvent.peerChangedName, user, room);
+            }
         }
 
         [FunctionName(nameof(CreateRoom))]
@@ -142,13 +145,12 @@ namespace azure_function.Functions
             User user = await _roomMgr.GetUser(context.UserId);
             Room room = await _roomMgr.GetRoom(roomId);
 
-            _logger.LogInformation($"telling peers {string.Join(',', room.Users.Select(u => u.Id))} that {user.Id} joined room {roomId}");
+            _logger.LogInformation($"telling peers {string.Join(',', room.Users.Where(u => u.Id != user.Id).Select(u => u.Id))} that {user.Id} joined room {roomId}");
             await Groups.AddToGroupAsync(context.ConnectionId, roomId);
-            await ToPeers(user.Id, context.ConnectionId, ClientEvent.peerJoinedRoom, user, room.Users);
+            await ToPeers(user.Id, context.ConnectionId, ClientEvent.peerJoinedRoom, user, room);
             return new
             {
-                room = room,
-                peers = room.Users
+                room = room
             };
         }
 
@@ -163,7 +165,7 @@ namespace azure_function.Functions
 
             await _roomMgr.UserJoinCall(user, room);
 
-            await ToRoom(user.RoomId, ClientEvent.peerJoiningCall, user, room.Users);
+            await ToRoom(user.RoomId, ClientEvent.peerJoiningCall, user, room);
         }
 
         [FunctionName(nameof(LeaveRoom))]
@@ -182,7 +184,7 @@ namespace azure_function.Functions
             if (user == null || room == null) return;
 
             await _roomMgr.UserLeaveCall(user, room);
-            await ToRoom(user.RoomId, ClientEvent.peerLeftCall, user, room.Users);
+            await ToRoom(user.RoomId, ClientEvent.peerLeftCall, user, room);
         }
 
         [FunctionName(nameof(Offer))]

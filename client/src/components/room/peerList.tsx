@@ -6,16 +6,16 @@ import { PeerControl } from '../peerControl'
 
 const PeerList = () => {
   const { user } = useSessionContext()
-  const { room, peers } = useRoomContext()
+  const { room } = useRoomContext()
   const sorted = useMemo(() => {
     if (!user || !room) return []
 
-    return [...peers].sort((a, b) => {
+    return [...room.users].sort((a, b) => {
       if (a.id === user?.id) return -1
       else if (b.id === user?.id) return 1
       else return a.order > b.order ? 1 : -1
     })
-  }, [user, peers])
+  }, [user, room])
 
   return (
     <div className='peer-list'>

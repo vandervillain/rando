@@ -15,7 +15,7 @@ type PeerControlProps = {
 const PeerControl = ({ peerId }: PeerControlProps) => {
   const { user } = useSessionContext()
   const { streams } = useStreamContext()
-  const { room, peers, currUserPeer } = useRoomContext()
+  const { room, currUserPeer } = useRoomContext()
   const {
     connectIsStreamingVolume,
     disconnectIsStreamingVolume,
@@ -26,7 +26,7 @@ const PeerControl = ({ peerId }: PeerControlProps) => {
 
   const isCurrUser = peerId === user?.id
   const stream = streams.find(s => s.id === peerId)
-  const peer = peers.find(p => p.id === peerId)
+  const peer = room.users.find(p => p.id === peerId)
 
   const className = () => {
     let classes = ['peer-control']

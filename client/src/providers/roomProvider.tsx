@@ -1,4 +1,4 @@
-import React, { FunctionComponent, useCallback, useEffect, useMemo, useState } from 'react'
+import React, { FunctionComponent, useEffect, useState } from 'react'
 import { RoomControl } from '../components/room'
 import { useStreamContext } from './streamProvider'
 import { Room, RoomPeer } from '../data/types'
@@ -11,7 +11,6 @@ import { useNavigate } from 'react-router-dom'
 
 type RoomContext = {
   room: Room
-  peers: RoomPeer[]
   currUserPeer: RoomPeer | undefined
 }
 
@@ -32,7 +31,6 @@ type RoomProviderProps = {
 export const RoomProvider: FunctionComponent<RoomProviderProps> = ({ joinRoomId }) => {
   console.debug(`<RoomProvider />`)
   const [room, setRoom] = useState<Room | null>(null)
-  const [roomPeers, setRoomPeers] = useState<RoomPeer[]>([])
   const navigate = useNavigate()
   const { user } = useSessionContext()
   const signalR = useSignalRContext()
@@ -40,44 +38,44 @@ export const RoomProvider: FunctionComponent<RoomProviderProps> = ({ joinRoomId 
   const { streamMic, requestStream, removeStream, destroyStreams } = useStreamContext()
   const audio = useAudio(getUserSettings)
 
-  const onPeerJoinedRoom = (peer: RoomPeer, peers: RoomPeer[]) => {
+  const onPeerJoinedRoom = (peer: RoomPeer, room: Room) => {
     console.log(`${peer.name} joined the room`)
-    setRoomPeers(peers)
+    setRoom(room)
   }
 
-  const onPeerLeftRoom = async (peer: RoomPeer, peers: RoomPeer[]) => {
+  const onPeerLeftRoom = async (peer: RoomPeer, room: Room) => {
     console.log(`${peer.name} left the room`)
     await removeStream(peer.id)
-    setRoomPeers(peers)
+    setRoom(room)
   }
 
-  const onPeerJoiningCall = async (peer: RoomPeer, peers: RoomPeer[]) => {
+  const onPeerJoiningCall = async (peer: RoomPeer, room: Room) => {
     console.log(`${peer.name} is joining the call`)
     // if current user is in call too, then start up connection workflow
-    const thisUser = peers.find(p => p.id === user!.id)
+    const thisUser = room.users.find(p => p.id === user!.id)
     if (thisUser?.inCall) {
       if (peer.id !== thisUser.id) await requestStream(peer.id)
       audio.playOn(peer.id, peer.sound as SoundType)
     }
-    setRoomPeers(peers)
+    setRoom(room)
   }
 
-  const onPeerLeftCall = (peer: RoomPeer, peers: RoomPeer[]) => {
+  const onPeerLeftCall = (peer: RoomPeer, room: Room) => {
     console.log(`${peer.name} left the call`)
     removeStream(peer.id)
-    const thisUser = peers.find(p => p.id === user!.id)
+    const thisUser = room.users.find(p => p.id === user!.id)
     if (thisUser?.inCall) audio.playOff(peer.id)
 
-    setRoomPeers(peers)
+    setRoom(room)
   }
 
-  const onPeerChangedProfile = (peer: RoomPeer, peers: RoomPeer[]) => {
+  const onPeerChangedProfile = (peer: RoomPeer, room: Room) => {
     console.log(`${peer.name} has updated their profile`)
-    setRoomPeers(peers)
+    setRoom(room)
   }
 
   const joinRoomCall = async () => {
-    const thisUser = roomPeers.find(p => p.id === user!.id)
+    const thisUser = room?.users.find(p => p.id === user!.id)
     if (!thisUser) return
     console.log('you are joining the call')
     await streamMic(thisUser.id)
@@ -85,7 +83,7 @@ export const RoomProvider: FunctionComponent<RoomProviderProps> = ({ joinRoomId 
   }
 
   const leaveRoomCall = async () => {
-    const thisUser = roomPeers.find(p => p.id === user!.id)
+    const thisUser = room?.users.find(p => p.id === user!.id)
     if (!thisUser) return
     console.log('you are leaving the call')
     destroyStreams()
@@ -121,8 +119,7 @@ export const RoomProvider: FunctionComponent<RoomProviderProps> = ({ joinRoomId 
           navigate('/404')
           return
         }
-        setRoom(roomInfo.room)
-        setRoomPeers(roomInfo.peers)
+        setRoom(roomInfo)
       })
     }
   }, [])
@@ -131,8 +128,7 @@ export const RoomProvider: FunctionComponent<RoomProviderProps> = ({ joinRoomId 
     <Context.Provider
       value={{
         room,
-        peers: roomPeers,
-        currUserPeer: roomPeers.find(p => p.id === user!.id),
+        currUserPeer: room.users.find(p => p.id === user!.id),
       }}
     >
       <RoomControl joinCall={joinRoomCall} leaveCall={leaveRoomCall} />

@@ -13,7 +13,7 @@ type SignalRContext = {
   unsubscribeFrom: (channel: SignalRChannels, callback: (...args: any[]) => any) => void
   // room
   requestPeers: () => Promise<RoomPeer[]>
-  joinRoom: (roomId: string) => Promise<{ room: Room; peers: RoomPeer[] }>
+  joinRoom: (roomId: string) => Promise<Room>
   joinCall: () => Promise<void>
   leaveCall: () => Promise<void>
   // rtc
